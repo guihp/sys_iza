@@ -6,6 +6,7 @@ import { requireSessao } from '@/auth/session'
 import { detectarConflito, type Slot } from '@/domain/scheduling/conflict'
 import { validarHorarioDeAtendimento } from '@/domain/scheduling/working-hours'
 import { dataDaClinica, deslocarData, horaDaClinica, instanteDaClinica } from '@/lib/datetime'
+import { planejarLembretesDaConsulta } from '@/lib/lembretes'
 import { createServerClient } from '@/lib/supabase/server'
 
 const CAMINHO_AGENDA = '/agenda'
@@ -160,9 +161,21 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
     registro_id: consulta.id,
   })
 
-  // TODO(Task 9): planejar os lembretes desta consulta com `planejarLembretes()`
-  // e gravá-los em `reminder_jobs`. A função pura e a tabela ainda não existem —
-  // são entregues na Task 9, e é lá que esta chamada entra.
+  // Lembretes da consulta: confirmação na véspera e aviso curto no dia. O que
+  // sai daqui depende do consentimento da paciente (`aceita_whatsapp` /
+  // `aceita_email`) e de haver telefone e e-mail no cadastro — a decisão é do
+  // domínio, em plan-reminders.ts.
+  //
+  // Falha aqui não desfaz o agendamento, pelo mesmo critério do estágio do funil
+  // e do audit_log acima: a consulta marcada é o dado que importa, e derrubá-la
+  // por causa de um lembrete deixaria a secretária com a paciente na linha e sem
+  // horário. Lembrete que não foi planejado se recupera replanejando — a chave
+  // de idempotência garante que replanejar não duplica.
+  await planejarLembretesDaConsulta(supabase, {
+    appointmentId: consulta.id,
+    patientId: dados.pacienteId,
+    inicio,
+  })
 
   revalidatePath(CAMINHO_AGENDA)
   revalidatePath(CAMINHO_FUNIL)

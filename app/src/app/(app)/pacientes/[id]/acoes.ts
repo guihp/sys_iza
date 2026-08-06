@@ -6,6 +6,7 @@ import { exigirDra, ErroDePermissao } from '@/auth/guard'
 import { getSessao } from '@/auth/session'
 import { calcularRetorno } from '@/domain/returns/compute-return'
 import { dataDaClinica, dataDoDiaDeCalendario, diaDeCalendario } from '@/lib/datetime'
+import { planejarLembretesDoAtendimento } from '@/lib/lembretes'
 import { createServerClient } from '@/lib/supabase/server'
 
 const CAMINHO_FUNIL = '/crm'
@@ -167,9 +168,21 @@ export async function registrarAtendimento(entrada: unknown): Promise<ResultadoD
     registro_id: registro.id,
   })
 
-  // TODO(Task 9): planejar os lembretes de pós-procedimento, avaliação e retorno
-  // com `planejarLembretesPosAtendimento()` e gravá-los em `reminder_jobs`. A
-  // função pura e a tabela são entregues na Task 9 — é lá que esta chamada entra.
+  // Lembretes de pós-atendimento: cuidados em 24h, avaliação em 7 dias e o
+  // aviso de retorno uma semana antes do vencimento. O vencimento vai como a
+  // mesma âncora de dia de calendário usada no cálculo — não a `date` lida de
+  // volta do banco — para que a conta de "sete dias antes" não dependa de como o
+  // driver serializou a coluna.
+  //
+  // Falha aqui não desfaz o registro, pelo mesmo critério do status da agenda e
+  // do estágio do funil acima: o prontuário é o dado que importa. Replanejar é
+  // seguro — a chave de idempotência impede duplicata.
+  await planejarLembretesDoAtendimento(supabase, {
+    attendanceId: registro.id,
+    patientId: dados.pacienteId,
+    realizadoEm: agora,
+    retornoVencimento: vencimento,
+  })
 
   revalidatePath(`/pacientes/${dados.pacienteId}`)
   revalidatePath(CAMINHO_RETORNOS)
