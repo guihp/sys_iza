@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "worker": "tsx --env-file-if-exists=.env.local worker/index.ts",
+    "worker:build": "esbuild worker/index.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/worker.cjs --alias:@=./src",
+    "worker:start": "node dist/worker.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "dotenv -e .env.test -- vitest run --config vitest.db.config.ts"
@@ -30,11 +33,13 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.5",
     "dotenv-cli": "^11.0.0",
+    "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "jsdom": "^30.0.1",
     "supabase": "^2.111.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.9",
     "typescript": "^5",
     "vitest": "^4.1.10"
   },

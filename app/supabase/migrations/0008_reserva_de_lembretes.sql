@@ -1,0 +1,85 @@
+-- 0008_reserva_de_lembretes.sql
+-- Um estado a mais na fila de lembretes: `enviando`.
+--
+-- Idempotente: `add value if not exists`.
+--
+-- ---------------------------------------------------------------------------
+-- O problema
+-- ---------------------------------------------------------------------------
+-- O worker de despacho (Task 11) lê a fila a cada cinco minutos. Até aqui a
+-- leitura era um `select ... where status = 'pendente' and agendado_para <= now()`,
+-- e isso funciona enquanto houver exatamente um worker no ar.
+--
+-- Não haverá. Todo deploy no Coolify sobe o container novo antes de derrubar o
+-- velho, e por alguns segundos existem dois processos com a mesma fila na
+-- frente. Um restart do host produz o mesmo efeito. Com o `select` puro, os dois
+-- leem as mesmas linhas, os dois chamam a Evolution API, e a paciente recebe
+-- "sua consulta é amanhã" duas vezes — que é o pior erro que este sistema pode
+-- cometer, porque não tem desfazer e queima a confiança na clínica inteira.
+--
+-- A constraint `unique` em `chave_idempotencia` (migration 0007) não resolve
+-- isto: ela impede que o mesmo lembrete seja PLANEJADO duas vezes, o que é outra
+-- corrida. Uma vez planejado, existe uma linha só — e duas instâncias despachando
+-- essa mesma linha passam longe de qualquer `unique`.
+--
+-- ---------------------------------------------------------------------------
+-- A solução
+-- ---------------------------------------------------------------------------
+-- Trocar a leitura por uma RESERVA: um `update` condicional que tira a linha de
+-- `pendente` e devolve o que conseguiu pegar.
+--
+--   update reminder_jobs set status = 'enviando'
+--    where id = any($1) and status = 'pendente'
+--   returning id;
+--
+-- No Postgres, sob READ COMMITTED, dois `update` concorrentes sobre a mesma
+-- linha serializam: o segundo espera o primeiro commitar, reavalia o `where` com
+-- a versão nova da linha, vê `status = 'enviando'`, e não casa. Ele recebe zero
+-- linhas de volta e simplesmente não despacha aquele job. Não é convenção da
+-- aplicação nem checagem otimista — é o mecanismo de lock de linha do banco, e
+-- vale para qualquer número de instâncias.
+--
+-- Por isso o worker só despacha o que voltou do `returning`, nunca o que ele
+-- leu no `select` anterior. O `select` é só o candidato; o `update` é a posse.
+--
+-- ---------------------------------------------------------------------------
+-- Por que um estado novo e não uma coluna de lease
+-- ---------------------------------------------------------------------------
+-- A alternativa seria `reservado_em timestamptz` com a mesma mecânica. O estado
+-- foi preferido por dois motivos práticos:
+--
+--   - a tela de lembretes (Task 13) mostra `status`, e "enviando" é o que a
+--     secretária precisa ver quando pergunta por que a mensagem ainda não saiu.
+--     Um lease invisível apareceria ali como "pendente" para sempre;
+--   - o índice de fila `reminder_jobs_fila_idx` é parcial em `status = 'pendente'`.
+--     Sair de `pendente` tira a linha do índice de graça, sem cláusula extra.
+--
+-- ---------------------------------------------------------------------------
+-- O que acontece se o worker morrer com o job reservado
+-- ---------------------------------------------------------------------------
+-- A linha fica em `enviando` e NÃO é recuperada automaticamente. É deliberado, e
+-- é a mesma escolha que atravessa o sistema todo: entre atrasar um lembrete e
+-- mandá-lo duas vezes, atrasa-se.
+--
+-- Um "devolve para pendente depois de N minutos" parece a correção óbvia e é uma
+-- armadilha: não há como distinguir, olhando a linha, o worker que morreu ANTES
+-- de chamar o provedor do que morreu DEPOIS de a mensagem sair e antes de
+-- gravar. Devolver os dois casos à fila reenvia o segundo.
+--
+-- Na prática o caso quase não acontece: o worker trata SIGTERM esperando o ciclo
+-- em curso terminar, então o deploy normal do Coolify não deixa nada preso. O
+-- que sobra é `SIGKILL` e queda de energia. Para esses, o worker conta as
+-- reservas presas no boot e avisa no log; a decisão de reenviar é de gente, com
+-- o `provider_message_id` e a conversa do WhatsApp à vista.
+--
+-- ---------------------------------------------------------------------------
+-- Nota sobre transação
+-- ---------------------------------------------------------------------------
+-- `alter type ... add value` roda dentro de transação no Postgres 12+, mas o
+-- valor novo não pode ser USADO na mesma transação. Por isso esta migration só
+-- adiciona o rótulo: nada de `create index ... where status = 'enviando'` aqui,
+-- que falharia com "unsafe use of new value of enum type". Se a fila um dia
+-- crescer a ponto de a varredura de reservas presas doer, o índice entra numa
+-- migration própria, depois desta.
+
+alter type public.reminder_status add value if not exists 'enviando' after 'pendente';

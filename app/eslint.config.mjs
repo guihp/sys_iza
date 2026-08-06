@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Bundle do worker gerado por `pnpm worker:build`. É código de terceiros
+    // concatenado — lintá-lo só produz centenas de avisos sobre a Supabase e a
+    // zod, e esconde os avisos do código que escrevemos.
+    "dist/**",
   ]),
 ]);
 
