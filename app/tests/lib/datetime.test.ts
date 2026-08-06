@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   FUSO_CLINICA,
   dataDaClinica,
+  dataDoDiaDeCalendario,
   deslocarData,
   diaDaSemanaDaData,
+  diaDeCalendario,
   formatarDataExtensa,
+  formatarDataExtensaComAno,
   horaDaClinica,
   instanteDaClinica,
   minutosDoDiaNaClinica,
@@ -157,5 +160,44 @@ describe('diaDaSemanaDaData', () => {
 describe('formatarDataExtensa', () => {
   it('escreve a data em português', () => {
     expect(formatarDataExtensa('2026-08-10')).toBe('10 de agosto')
+  })
+})
+
+describe('formatarDataExtensaComAno', () => {
+  it('inclui o ano', () => {
+    expect(formatarDataExtensaComAno('2026-12-03')).toBe('3 de dezembro de 2026')
+  })
+
+  it('serve para retorno que cai no ano seguinte', () => {
+    expect(formatarDataExtensaComAno('2027-01-15')).toBe('15 de janeiro de 2027')
+  })
+})
+
+describe('diaDeCalendario e dataDoDiaDeCalendario', () => {
+  it('ancoram a data na meia-noite UTC, sem fuso no meio', () => {
+    expect(diaDeCalendario('2026-12-03').toISOString()).toBe('2026-12-03T00:00:00.000Z')
+  })
+
+  it('fazem ida e volta sem perder o dia', () => {
+    // O caminho que o vencimento de retorno percorre: coluna `date` do Postgres
+    // → Date → conta de dias → coluna `date` de novo. Se a ida e a volta não
+    // fossem simétricas, o retorno andaria um dia a cada gravação.
+    for (const data of ['2026-01-01', '2026-08-05', '2026-10-18', '2027-02-28', '2028-02-29']) {
+      expect(dataDoDiaDeCalendario(diaDeCalendario(data))).toBe(data)
+    }
+  })
+
+  it('a âncora não é afetada por horário de verão', () => {
+    // 2018-10-21 foi a virada do último horário de verão brasileiro. Ancorar no
+    // fuso da clínica faria a diferença entre dois dias vizinhos deixar de ser
+    // 24h e a contagem de dias da fila erraria por um.
+    const antes = diaDeCalendario('2018-10-20')
+    const depois = diaDeCalendario('2018-10-21')
+    expect(depois.getTime() - antes.getTime()).toBe(86_400_000)
+  })
+
+  it('dataDoDiaDeCalendario lê em UTC, não no fuso de quem roda o teste', () => {
+    expect(dataDoDiaDeCalendario(new Date('2026-08-05T00:00:00.000Z'))).toBe('2026-08-05')
+    expect(dataDoDiaDeCalendario(new Date('2026-08-05T23:59:59.000Z'))).toBe('2026-08-05')
   })
 })

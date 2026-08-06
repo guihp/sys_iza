@@ -53,6 +53,13 @@ const DATA_EXTENSA = new Intl.DateTimeFormat('pt-BR', {
   month: 'long',
 })
 
+const DATA_EXTENSA_COM_ANO = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'UTC',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
+
 function dois(valor: number): string {
   return String(valor).padStart(2, '0')
 }
@@ -162,4 +169,44 @@ export function diaDaSemanaDaData(dataISO: string): number {
 export function formatarDataExtensa(dataISO: string): string {
   const [ano, mes, dia] = dataISO.split('-').map(Number)
   return DATA_EXTENSA.format(new Date(Date.UTC(ano, mes - 1, dia)))
+}
+
+/**
+ * `2026-12-03` → `3 de dezembro de 2026`.
+ *
+ * Com ano, ao contrário de `formatarDataExtensa`: retorno de procedimento cai
+ * meses à frente e às vezes no ano seguinte, e "3 de dezembro" sem ano deixa a
+ * Dra. adivinhando qual dezembro.
+ */
+export function formatarDataExtensaComAno(dataISO: string): string {
+  const [ano, mes, dia] = dataISO.split('-').map(Number)
+  return DATA_EXTENSA_COM_ANO.format(new Date(Date.UTC(ano, mes - 1, dia)))
+}
+
+/**
+ * `YYYY-MM-DD` → o instante de meia-noite **UTC** daquele dia.
+ *
+ * Âncora de calendário, não conversão de fuso — e a diferença importa. O
+ * vencimento de retorno é uma coluna `date` no Postgres: um dia do calendário,
+ * sem hora e sem fuso. Para somar ou subtrair dias sobre ele é preciso virá-lo
+ * `Date`, e a escolha da âncora decide se a conta erra.
+ *
+ * Ancorar no fuso da clínica (`instanteDaClinica`) seria o erro: sob horário de
+ * verão dois dias vizinhos deixam de distar 24h exatas, e a contagem de dias da
+ * fila de retornos passaria a errar por um em volta da virada. Ancorando em UTC,
+ * todo dia tem exatamente 86.400.000 ms e a aritmética é exata o ano inteiro.
+ *
+ * O fuso entra uma vez só, antes disto: é `dataDaClinica(new Date())` quem
+ * decide **qual** dia de calendário é hoje na clínica — às 22:00 de Brasília o
+ * UTC já virou, e usar o dia do servidor marcaria paciente como atrasado um dia
+ * antes da hora. Decidido o dia, o resto é calendário puro.
+ */
+export function diaDeCalendario(dataISO: string): Date {
+  const [ano, mes, dia] = dataISO.split('-').map(Number)
+  return new Date(Date.UTC(ano, mes - 1, dia))
+}
+
+/** Inverso de `diaDeCalendario`: lê o dia da âncora, em UTC. */
+export function dataDoDiaDeCalendario(instante: Date): string {
+  return `${instante.getUTCFullYear()}-${dois(instante.getUTCMonth() + 1)}-${dois(instante.getUTCDate())}`
 }

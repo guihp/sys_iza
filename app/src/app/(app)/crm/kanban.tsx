@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useOptimistic, useState, useTransition, type DragEvent } from 'react'
 import { formatarTelefone } from '@/lib/phone'
 import { moverEstagio } from './acoes'
@@ -123,7 +124,18 @@ function Cartao({
       }}
       className="cursor-grab rounded-lg border border-linha bg-superficie p-3 active:cursor-grabbing"
     >
-      <p className="text-sm">{paciente.nome_completo}</p>
+      {/*
+        `draggable={false}` no link: âncora é arrastável por padrão no navegador,
+        e o arrasto nativo do link roubaria o do cartão — o paciente pararia de
+        trocar de coluna com o mouse.
+      */}
+      <Link
+        href={`/pacientes/${paciente.id}`}
+        draggable={false}
+        className="text-sm hover:underline"
+      >
+        {paciente.nome_completo}
+      </Link>
       <p className="text-xs text-texto/60">{formatarTelefone(paciente.telefone)}</p>
       {paciente.lead_source && (
         <p className="mt-1 text-xs text-texto/50">Veio de: {paciente.lead_source}</p>
