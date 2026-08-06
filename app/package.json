@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "dotenv -e .env.test -- vitest run --config vitest.db.config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -28,9 +29,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.5",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "jsdom": "^30.0.1",
+    "supabase": "^2.111.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"
