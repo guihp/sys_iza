@@ -1,26 +1,47 @@
 @import "tailwindcss";
 
+/*
+ * Tokens do sistema visual. Ficam em `@theme` (nunca `@theme inline`) porque
+ * as utilitárias precisam sair como `var(--color-fundo)` — é isso que permite
+ * trocar o tema em tempo de execução só mexendo no atributo `data-tema`.
+ */
+@theme {
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --color-fundo: #FDFBF9;
+  --color-texto: #2E2A28;
+  --color-acento: #C09999;
+  --color-linha: #E7DFDA;
+  --color-superficie: #FFFFFF;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Escolha explícita do usuário vence a preferência do sistema. */
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --color-fundo: #14110F;
+  --color-texto: #EDE7E1;
+  --color-acento: #C8A97E;
+  --color-linha: #2C2622;
+  --color-superficie: #1C1815;
 }
 
+/* Sem escolha explícita, segue o sistema. `:not([data-tema="claro"])` é o que
+   deixa o usuário forçar o claro mesmo com o sistema no escuro. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-tema="claro"]) {
+    color-scheme: dark;
+    --color-fundo: #14110F;
+    --color-texto: #EDE7E1;
+    --color-acento: #C8A97E;
+    --color-linha: #2C2622;
+    --color-superficie: #1C1815;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-fundo);
+  color: var(--color-texto);
 }

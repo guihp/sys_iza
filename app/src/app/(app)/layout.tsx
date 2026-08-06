@@ -1,15 +1,15 @@
 import { requireSessao } from '@/auth/session'
+import { AppShell } from '@/components/app-shell'
 
 /**
  * Layout de tudo que exige login. `requireSessao()` é a autorização de
  * verdade (o proxy faz só a checagem otimista) e redireciona para `/login`
  * quando não há sessão válida ou o perfil está inativo.
  *
- * TODO(Task 4): envolver `children` em `<AppShell sessao={sessao}>`, que traz
- * navegação lateral, cabeçalho e alternador de tema. Enquanto o AppShell não
- * existe, este layout entrega só a proteção — nada de casca provisória.
+ * A sessão resolvida aqui alimenta o `AppShell`, que decide o menu pelo papel:
+ * a secretária não recebe sequer o link das telas de configuração.
  */
 export default async function LayoutProtegido({ children }: { children: React.ReactNode }) {
-  await requireSessao()
-  return <>{children}</>
+  const sessao = await requireSessao()
+  return <AppShell sessao={sessao}>{children}</AppShell>
 }
