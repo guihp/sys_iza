@@ -1,7 +1,9 @@
 import { requireSessao } from '@/auth/session'
+import { CabecalhoDePagina, Kpi } from '@/components/ui'
 import { dataDaClinica, deslocarData, instanteDaClinica } from '@/lib/datetime'
 import { createServerClient } from '@/lib/supabase/server'
 import { diasDaSemana, inicioDaSemana } from './grade'
+import { kpisDaSemana } from './kpis-da-semana'
 import { ehStatusDeConsulta } from './status'
 import {
   AgendaSemanal,
@@ -101,15 +103,26 @@ export default async function PaginaDaAgenda({
     duracaoMinutos: procedimento.duracao_minutos,
   }))
 
+  const kpis = kpisDaSemana(consultas, dias, hoje)
+
   return (
     <section className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="font-serif text-2xl">Agenda</h1>
-        <p className="text-sm text-texto/60">
-          Clique num horário livre para marcar. Horário já ocupado ou fora do expediente é recusado
-          com o motivo — a conferência acontece no servidor, não só na tela.
-        </p>
-      </header>
+      <CabecalhoDePagina
+        secao="Semana clínica"
+        titulo="Agenda"
+        descricao="Clique num horário livre para marcar. Horário ocupado ou fora do expediente é recusado com o motivo — a conferência acontece no servidor, não só na tela."
+        kpis={
+          <>
+            <Kpi rotulo="Atendimentos" valor={kpis.atendimentos} sublegenda="nesta semana" />
+            <Kpi
+              rotulo="Ocupação"
+              valor={`${kpis.ocupacaoPercentual}%`}
+              sublegenda="da grade útil"
+            />
+            <Kpi rotulo="Hoje" valor={kpis.hoje} sublegenda="na cadeira" />
+          </>
+        }
+      />
 
       {agenda.error ? (
         <p role="alert" className="text-sm text-red-600">

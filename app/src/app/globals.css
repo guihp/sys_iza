@@ -4,28 +4,80 @@
  * Tokens do sistema visual. Ficam em `@theme` (nunca `@theme inline`) porque
  * as utilitárias precisam sair como `var(--color-fundo)` — é isso que permite
  * trocar o tema em tempo de execução só mexendo no atributo `data-tema`.
+ *
+ * O desenho é editorial e sóbrio: serifada no que é número ou nome próprio,
+ * sem-serifa no resto, borda fina de 1px em tudo, nenhuma sombra e nenhum
+ * gradiente. Os valores abaixo são os do tema claro, que é o dos mockups.
  */
 @theme {
   --font-serif: Georgia, 'Times New Roman', serif;
-  --color-fundo: #FDFBF9;
-  --color-texto: #2E2A28;
-  --color-acento: #C09999;
-  --color-linha: #E7DFDA;
+
+  /* Fundo da página e da sidebar. */
+  --color-fundo: #F7F4F0;
+  /* Cartão, linha de tabela, campo. */
   --color-superficie: #FFFFFF;
+  /* Contêiner de coluna do kanban, caixa de prévia — meio passo acima do fundo. */
+  --color-superficie-2: #FCFAF7;
+
+  --color-texto: #2E2A28;
+  /*
+   * Rótulo, legenda, texto de apoio.
+   *
+   * O mockup pedia #8A8078, que rende 3,52:1 sobre `--color-fundo` e reprova no
+   * AA (4,5:1 para texto normal) — e este token é justamente o do rótulo miúdo
+   * de 10px, o texto mais difícil de ler da tela. Escurecido mantendo a matiz:
+   * #736A63 dá 4,89:1 sobre o fundo, 5,15:1 sobre a superfície-2 e 5,36:1 sobre
+   * o branco. A seção 6 do spec manda escurecer o token em vez de aceitar.
+   */
+  --color-texto-suave: #736A63;
+
+  /*
+   * Dourado. Substitui o rosa #C09999 do desenho antigo, que não aparecia em
+   * mockup nenhum. Rótulo de seção, número em destaque, ponto do item ativo,
+   * preenchimento da barra de meta.
+   */
+  --color-acento: #B8935F;
+  /* Bloco da agenda, chip, caixa de prévia. */
+  --color-acento-suave: #EFE3D4;
+
+  /* Toda borda do sistema. Não existe borda de outra cor. */
+  --color-linha: #E8E1DA;
+
+  /* Botão primário: quase-preto com texto quase-branco. */
+  --color-solido: #1A1614;
+  --color-solido-texto: #FAF7F3;
+
+  /* "58 dias em atraso". Mesmo dourado do acento — o desenho não usa vermelho. */
+  --color-alerta: #B8935F;
+
+  /* Raio de cartão e de campo. Botão e chip são pílula (`rounded-full`). */
+  --radius-cartao: 12px;
 }
 
 :root {
   color-scheme: light;
 }
 
+/*
+ * Tema escuro. Os cinco valores originais são mantidos; os tokens novos são
+ * derivados na mesma chave — superfície-2 um passo acima da superfície, sólido
+ * invertido (claro com texto escuro) e acento-suave como o dourado a ~15% sobre
+ * o fundo.
+ */
 /* Escolha explícita do usuário vence a preferência do sistema. */
 :root[data-tema="escuro"] {
   color-scheme: dark;
   --color-fundo: #14110F;
-  --color-texto: #EDE7E1;
-  --color-acento: #C8A97E;
-  --color-linha: #2C2622;
   --color-superficie: #1C1815;
+  --color-superficie-2: #221D1A;
+  --color-texto: #EDE7E1;
+  --color-texto-suave: #9A9088;
+  --color-acento: #C8A97E;
+  --color-acento-suave: #2F2820;
+  --color-linha: #2C2622;
+  --color-solido: #EDE7E1;
+  --color-solido-texto: #14110F;
+  --color-alerta: #C8A97E;
 }
 
 /* Sem escolha explícita, segue o sistema. `:not([data-tema="claro"])` é o que
@@ -34,14 +86,29 @@
   :root:not([data-tema="claro"]) {
     color-scheme: dark;
     --color-fundo: #14110F;
-    --color-texto: #EDE7E1;
-    --color-acento: #C8A97E;
-    --color-linha: #2C2622;
     --color-superficie: #1C1815;
+    --color-superficie-2: #221D1A;
+    --color-texto: #EDE7E1;
+    --color-texto-suave: #9A9088;
+    --color-acento: #C8A97E;
+    --color-acento-suave: #2F2820;
+    --color-linha: #2C2622;
+    --color-solido: #EDE7E1;
+    --color-solido-texto: #14110F;
+    --color-alerta: #C8A97E;
   }
 }
 
 body {
   background: var(--color-fundo);
   color: var(--color-texto);
+}
+
+/*
+ * Foco visível em tudo que recebe teclado (seção 6 do spec). Anel de acento com
+ * um vão da cor do fundo, para o anel não se perder em cima de botão sólido.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
 }

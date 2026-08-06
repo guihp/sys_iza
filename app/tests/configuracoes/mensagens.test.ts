@@ -6,7 +6,10 @@ import {
   VARIAVEIS_CONHECIDAS,
   avisosDeVariaveis,
   exemploDoGatilho,
+  gatilhoEstaAtivo,
+  inserirTrecho,
   previaDoTemplate,
+  rotuloDosCanais,
   validarTemplate,
 } from '@/app/(app)/configuracoes/mensagens/mensagens'
 
@@ -181,6 +184,84 @@ describe('catálogo de gatilhos', () => {
     for (const gatilho of GATILHOS) {
       expect(gatilho.variaveis).toContain('nome')
     }
+  })
+
+  it('os títulos e as descrições batem com o desenho', () => {
+    expect(
+      GATILHOS.map((g) => ({
+        kind: g.kind,
+        titulo: g.titulo,
+        quando: g.quando,
+        canais: rotuloDosCanais(g.canais),
+      })),
+    ).toEqual([
+      {
+        kind: 'confirmacao',
+        titulo: 'Confirmação da véspera',
+        quando: 'Às 09:00 do dia anterior à consulta.',
+        canais: 'WhatsApp · E-mail',
+      },
+      {
+        kind: 'vespera_curta',
+        titulo: 'Lembrete do dia',
+        quando: 'Três horas antes da consulta. Só WhatsApp — e-mail não chega a tempo.',
+        canais: 'WhatsApp',
+      },
+      {
+        kind: 'pos_procedimento',
+        titulo: 'Cuidados pós-procedimento',
+        quando: '24 horas depois do atendimento registrado.',
+        canais: 'WhatsApp',
+      },
+      {
+        kind: 'avaliacao',
+        titulo: 'Como está o resultado',
+        quando: 'Sete dias depois do atendimento.',
+        canais: 'WhatsApp',
+      },
+      {
+        kind: 'retorno',
+        titulo: 'Retorno chegando',
+        quando: 'Sete dias antes do vencimento do retorno.',
+        canais: 'WhatsApp · E-mail',
+      },
+    ])
+  })
+})
+
+describe('gatilhoEstaAtivo', () => {
+  it('fica ativo se qualquer canal ainda envia', () => {
+    expect(
+      gatilhoEstaAtivo('confirmacao', [
+        { kind: 'confirmacao', channel: 'whatsapp', ativo: false },
+        { kind: 'confirmacao', channel: 'email', ativo: true },
+      ]),
+    ).toBe(true)
+  })
+
+  it('só desliga quando todos os canais estão desligados', () => {
+    expect(
+      gatilhoEstaAtivo('confirmacao', [
+        { kind: 'confirmacao', channel: 'whatsapp', ativo: false },
+        { kind: 'confirmacao', channel: 'email', ativo: false },
+      ]),
+    ).toBe(false)
+  })
+})
+
+describe('inserirTrecho', () => {
+  it('insere no meio e devolve o cursor depois do trecho', () => {
+    expect(inserirTrecho('Olá, !', '{{nome}}', 5, 5)).toEqual({
+      texto: 'Olá, {{nome}}!',
+      cursor: 13,
+    })
+  })
+
+  it('substitui a seleção', () => {
+    expect(inserirTrecho('Oi Maria', '{{nome}}', 3, 8)).toEqual({
+      texto: 'Oi {{nome}}',
+      cursor: 11,
+    })
   })
 })
 

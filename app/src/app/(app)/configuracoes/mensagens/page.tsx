@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireSessao } from '@/auth/session'
+import { CabecalhoDePagina } from '@/components/ui'
 import { createServerClient } from '@/lib/supabase/server'
 import { EditorDeMensagens, type TemplateSalvo } from './editor'
 
@@ -28,30 +29,28 @@ export default async function PaginaDeMensagens() {
     .from('message_templates')
     .select('kind, channel, assunto, corpo, ativo')
 
-  if (error) {
-    return (
-      <section className="space-y-6">
-        <h1 className="font-serif text-2xl">Mensagens</h1>
+  return (
+    <section className="space-y-6">
+      <CabecalhoDePagina
+        secao="Automação"
+        titulo="Mensagens"
+        descricao={
+          <>
+            O texto de cada lembrete automático. Escreva{' '}
+            <code className="text-acento">{'{{nome}}'}</code> onde o nome da paciente
+            deve entrar — a prévia mostra como a mensagem chega. Para parar um
+            envio, use Desligar: o texto fica guardado.
+          </>
+        }
+      />
+
+      {error ? (
         <p role="alert" className="text-sm text-red-600">
           Não foi possível carregar os textos. Recarregue a página.
         </p>
-      </section>
-    )
-  }
-
-  return (
-    <section className="max-w-3xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="font-serif text-2xl">Mensagens</h1>
-        <p className="text-sm text-texto/60">
-          O texto de cada lembrete automático. Escreva{' '}
-          <code className="rounded bg-superficie px-1">{'{{nome}}'}</code> onde o nome da paciente
-          deve entrar — a prévia abaixo de cada campo mostra como a mensagem chega. Para parar de
-          enviar um lembrete, use Desligar: o texto fica guardado.
-        </p>
-      </header>
-
-      <EditorDeMensagens templates={(data ?? []) as TemplateSalvo[]} />
+      ) : (
+        <EditorDeMensagens templates={(data ?? []) as TemplateSalvo[]} />
+      )}
     </section>
   )
 }

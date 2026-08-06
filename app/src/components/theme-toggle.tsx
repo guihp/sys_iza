@@ -1,6 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
+import { Pilula } from '@/components/ui'
 import { CHAVE_TEMA, EVENTO_TEMA, ehTema, type Tema } from '@/lib/tema'
 
 function prefereEscuro(): boolean {
@@ -48,14 +49,12 @@ export function ThemeToggle() {
     window.dispatchEvent(new Event(EVENTO_TEMA))
   }
 
+  // Só a aparência mudou: é uma `Pilula contorno`, e a caixa alta vem do CSS
+  // (`uppercase`), não do texto. O rótulo continua sendo "Escuro"/"Claro" no
+  // DOM — trocá-lo por "ESCURO" mudaria o que o leitor de tela soletra.
   return (
-    <button
-      type="button"
-      onClick={alternar}
-      aria-label="Alternar tema"
-      className="rounded-lg border border-linha px-3 py-1.5 text-sm hover:bg-superficie"
-    >
+    <Pilula variante="contorno" onClick={alternar} aria-label="Alternar tema">
       {tema === 'claro' ? 'Escuro' : 'Claro'}
-    </button>
+    </Pilula>
   )
 }

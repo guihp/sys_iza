@@ -107,6 +107,54 @@ export function gatilho(kind: ReminderKind): Gatilho {
   return achado
 }
 
+/** Nome de canal como a Dra. lê na tela. */
+export const NOME_DO_CANAL: Record<Canal, string> = {
+  whatsapp: 'WhatsApp',
+  email: 'E-mail',
+}
+
+/** "WhatsApp · E-mail" — a linha miúda do cartão de gatilho. */
+export function rotuloDosCanais(canais: Canal[]): string {
+  return canais.map((canal) => NOME_DO_CANAL[canal]).join(' · ')
+}
+
+/**
+ * O cartão da esquerda mostra ATIVO se algum canal do gatilho ainda envia.
+ * Só vira DESLIGADO quando todos os canais daquele lembrete estão desligados.
+ */
+export function gatilhoEstaAtivo(
+  kind: ReminderKind,
+  templates: ReadonlyArray<{ kind: ReminderKind; channel: Canal; ativo: boolean }>,
+): boolean {
+  const alvo = gatilho(kind)
+  return alvo.canais.some((canal) => {
+    const linha = templates.find((t) => t.kind === kind && t.channel === canal)
+    // Sem linha no banco: a migration semeia as sete; se sumiu, tratar como
+    // ligado — o editor também nasce com `ativo ?? true`.
+    return linha?.ativo ?? true
+  })
+}
+
+/**
+ * Insere um trecho na posição do cursor (ou substitui a seleção).
+ *
+ * Puro de propósito: o editor só precisa do texto novo e de onde deixar o
+ * cursor depois do clique na variável — sem acoplar a um `<textarea>`.
+ */
+export function inserirTrecho(
+  texto: string,
+  trecho: string,
+  inicio: number,
+  fim: number,
+): { texto: string; cursor: number } {
+  const i = Math.max(0, Math.min(inicio, texto.length))
+  const f = Math.max(i, Math.min(fim, texto.length))
+  return {
+    texto: texto.slice(0, i) + trecho + texto.slice(f),
+    cursor: i + trecho.length,
+  }
+}
+
 /**
  * Dados de exemplo da prévia.
  *

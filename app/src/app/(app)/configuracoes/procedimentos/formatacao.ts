@@ -20,6 +20,11 @@ export function descreverRetorno(dias: number | null): string {
   return dias === 1 ? '1 dia' : `${dias} dias`
 }
 
+/** Minutos → "60 min". Sempre o sufixo curto do mockup. */
+export function formatarDuracao(minutos: number): string {
+  return `${minutos} min`
+}
+
 /** Centavos → valor editável no campo de texto, sem símbolo de moeda. */
 export function precoParaCampo(centavos: number): string {
   const reais = Math.floor(centavos / 100)

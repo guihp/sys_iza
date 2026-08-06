@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   descreverRetorno,
+  formatarDuracao,
   formatarPreco,
   precoParaCampo,
   reaisParaCentavos,
@@ -28,6 +29,13 @@ describe('descreverRetorno', () => {
   it('descreve o intervalo em dias', () => {
     expect(descreverRetorno(120)).toBe('120 dias')
     expect(descreverRetorno(1)).toBe('1 dia')
+  })
+})
+
+describe('formatarDuracao', () => {
+  it('sufixo curto do mockup', () => {
+    expect(formatarDuracao(60)).toBe('60 min')
+    expect(formatarDuracao(45)).toBe('45 min')
   })
 })
 

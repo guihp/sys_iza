@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useState, useTransition } from 'react'
+import { Pilula, PilulaLink, RotuloMiudo } from '@/components/ui'
 import { faixasDoDia, minutosDeHHMM } from '@/domain/scheduling/working-hours'
 import {
   dataDaClinica,
@@ -18,7 +18,7 @@ import {
   posicionarNaGrade,
   rotuloDoPeriodo,
 } from './grade'
-import { CORES_DE_STATUS, ROTULOS_DE_STATUS, type StatusDeConsulta } from './status'
+import { ROTULOS_DE_STATUS, type StatusDeConsulta } from './status'
 
 export type ConsultaNaAgenda = {
   id: string
@@ -34,12 +34,17 @@ export type ConsultaNaAgenda = {
 export type OpcaoDePaciente = { id: string; nome: string }
 export type OpcaoDeProcedimento = { id: string; nome: string; duracaoMinutos: number }
 
-const CAMPO = 'w-full rounded-lg border border-linha bg-transparent px-3 py-2 text-sm'
-const BOTAO_PRINCIPAL = 'rounded-lg bg-acento px-4 py-2 text-sm text-white disabled:opacity-60'
-const BOTAO_DISCRETO = 'rounded-lg border border-linha px-3 py-1.5 text-sm hover:bg-superficie'
+const CAMPO =
+  'w-full rounded-cartao border border-linha bg-superficie px-3 py-2 text-[14px]'
 
-/** Altura de uma linha da grade. Meia hora tem que caber um nome e um horário. */
-const ALTURA_DA_LINHA = '3.25rem'
+/** Altura de uma linha da grade (meia hora). Duas linhas = 68px/hora do print. */
+const ALTURA_DA_LINHA = '34px'
+
+/** Fundo da coluna de hoje — cabeçalho e células. */
+const FUNDO_HOJE = 'bg-acento-suave/40'
+
+/** Fora do expediente / domingo. */
+const FUNDO_FORA = 'bg-linha/30'
 
 function hhmm(minutosDoDia: number): string {
   const hora = Math.floor(minutosDoDia / 60)
@@ -103,24 +108,24 @@ export function AgendaSemanal({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Link
+        <div className="flex flex-wrap items-center gap-2">
+          <PilulaLink
             href={`/agenda?semana=${deslocarData(inicioDaSemanaISO, -7)}`}
-            className={BOTAO_DISCRETO}
+            variante="contorno"
           >
             ← Semana anterior
-          </Link>
-          <Link href="/agenda" className={BOTAO_DISCRETO}>
+          </PilulaLink>
+          <PilulaLink href="/agenda" variante="solida">
             Hoje
-          </Link>
-          <Link
+          </PilulaLink>
+          <PilulaLink
             href={`/agenda?semana=${deslocarData(inicioDaSemanaISO, 7)}`}
-            className={BOTAO_DISCRETO}
+            variante="contorno"
           >
             Próxima semana →
-          </Link>
+          </PilulaLink>
         </div>
-        <p className="text-sm text-texto/60">{rotuloDoPeriodo(inicioDaSemanaISO)}</p>
+        <p className="font-serif text-[15px] text-texto">{rotuloDoPeriodo(inicioDaSemanaISO)}</p>
       </div>
 
       {escolha && (
@@ -135,22 +140,29 @@ export function AgendaSemanal({
       {/* Sete colunas de horário não cabem em tela de notebook. */}
       <div className="overflow-x-auto pb-2">
         <div
-          className="grid min-w-[56rem] gap-px"
+          className="min-w-[56rem] overflow-hidden rounded-cartao border border-linha bg-superficie"
           style={{
-            gridTemplateColumns: '4.5rem repeat(7, minmax(9rem, 1fr))',
+            display: 'grid',
+            gridTemplateColumns: '64px repeat(7, minmax(9rem, 1fr))',
             gridTemplateRows: `auto repeat(${FAIXAS.length}, ${ALTURA_DA_LINHA})`,
           }}
         >
+          <div
+            style={{ gridColumn: 1, gridRow: 1 }}
+            className="border-b border-linha"
+            aria-hidden="true"
+          />
+
           {dias.map((dia, indice) => (
             <div
               key={`cabecalho-${dia}`}
               style={{ gridColumn: indice + 2, gridRow: 1 }}
-              className={`border-b border-linha px-2 pb-2 text-center ${
-                dia === hoje ? 'text-acento' : 'text-texto/70'
+              className={`border-b border-linha px-2 py-2 text-center ${
+                dia === hoje ? FUNDO_HOJE : ''
               }`}
             >
-              <p className="text-xs uppercase tracking-wide">{ROTULOS_DOS_DIAS[indice]}</p>
-              <p className="text-sm">{formatarDataExtensa(dia)}</p>
+              <RotuloMiudo>{ROTULOS_DOS_DIAS[indice]}</RotuloMiudo>
+              <p className="mt-1 font-serif text-[15px]">{formatarDataExtensa(dia)}</p>
             </div>
           ))}
 
@@ -158,7 +170,7 @@ export function AgendaSemanal({
             <div
               key={`hora-${minutos}`}
               style={{ gridColumn: 1, gridRow: linha + 2 }}
-              className="pr-2 text-right text-xs text-texto/50"
+              className="border-b border-linha pr-2 text-right text-[11px] leading-[34px] text-texto-suave"
             >
               {/* Só as horas cheias recebem rótulo: a grade fica legível. */}
               {minutos % 60 === 0 ? hhmm(minutos) : ''}
@@ -171,6 +183,7 @@ export function AgendaSemanal({
 
               const aberta = faixaAberta(dia, minutos)
               const chave = `${dia}-${minutos}`
+              const ehHoje = dia === hoje
               const posicao = { gridColumn: indiceDoDia + 2, gridRow: linha + 2 }
 
               if (!aberta) {
@@ -179,7 +192,7 @@ export function AgendaSemanal({
                     key={chave}
                     style={posicao}
                     aria-hidden="true"
-                    className="border-b border-linha/40 bg-linha/20"
+                    className={`border-b border-linha ${ehHoje ? FUNDO_HOJE : FUNDO_FORA}`}
                   />
                 )
               }
@@ -191,9 +204,13 @@ export function AgendaSemanal({
                   style={posicao}
                   onClick={() => setEscolha({ dataISO: dia, minutos })}
                   aria-label={`Marcar consulta em ${formatarDataExtensa(dia)} às ${hhmm(minutos)}`}
-                  className="border-b border-linha/40 text-xs text-transparent hover:bg-superficie hover:text-texto/50 focus:bg-superficie focus:text-texto/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-acento"
+                  className={`group border-b border-linha text-[11px] text-transparent hover:bg-acento-suave/50 hover:text-texto-suave focus:bg-acento-suave/50 focus:text-texto-suave focus:outline-none focus-visible:ring-1 focus-visible:ring-acento ${
+                    ehHoje ? FUNDO_HOJE : ''
+                  }`}
                 >
-                  + {hhmm(minutos)}
+                  <span className="opacity-0 group-hover:opacity-100 group-focus:opacity-100">
+                    + {hhmm(minutos)}
+                  </span>
                 </button>
               )
             }),
@@ -207,27 +224,21 @@ export function AgendaSemanal({
                   gridColumn: indiceDoDia + 2,
                   gridRow: `${linha + 2} / span ${linhas}`,
                 }}
-                className={`overflow-hidden rounded-lg border px-2 py-1 text-xs ${
-                  CORES_DE_STATUS[consulta.status]
-                }`}
+                className="z-[1] m-0.5 overflow-hidden rounded-[8px] border border-[#D9C4A8] bg-acento-suave p-2"
               >
-                <p className="font-medium">
-                  {horaDaClinica(new Date(consulta.inicio))} –{' '}
+                <p className="text-[10px] text-texto-suave">
+                  {horaDaClinica(new Date(consulta.inicio))} —{' '}
                   {horaDaClinica(new Date(consulta.fim))}
                 </p>
-                <p className="truncate">{consulta.paciente}</p>
-                <p className="truncate text-texto/60">{consulta.procedimento}</p>
-                <p className="truncate text-texto/50">{ROTULOS_DE_STATUS[consulta.status]}</p>
-                {consulta.observacoes && (
-                  <p className="truncate text-texto/50" title={consulta.observacoes}>
-                    {consulta.observacoes}
-                  </p>
-                )}
+                <p className="truncate font-serif text-[13px]">{consulta.paciente}</p>
+                <p className="truncate text-[11px] text-texto-suave">{consulta.procedimento}</p>
               </article>
             )),
           )}
         </div>
       </div>
+
+      <LegendaDaGrade />
 
       {foraDaGrade.length > 0 && (
         <ListaDeConsultas
@@ -248,6 +259,32 @@ export function AgendaSemanal({
   )
 }
 
+/** Três amostras sempre visíveis — print pede legenda no rodapé da grade. */
+function LegendaDaGrade() {
+  return (
+    <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      <li className="flex items-center gap-2 text-[11px] text-texto-suave">
+        <span
+          aria-hidden="true"
+          className="size-2.5 shrink-0 rounded-[2px] border border-[#D9C4A8] bg-acento-suave"
+        />
+        Atendimento confirmado
+      </li>
+      <li className="flex items-center gap-2 text-[11px] text-texto-suave">
+        <span
+          aria-hidden="true"
+          className="size-2.5 shrink-0 rounded-[2px] border border-linha bg-superficie"
+        />
+        Horário livre
+      </li>
+      <li className="flex items-center gap-2 text-[11px] text-texto-suave">
+        <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-[2px] ${FUNDO_FORA}`} />
+        Fora do expediente
+      </li>
+    </ul>
+  )
+}
+
 function ListaDeConsultas({
   titulo,
   explicacao,
@@ -258,12 +295,12 @@ function ListaDeConsultas({
   consultas: ConsultaNaAgenda[]
 }) {
   return (
-    <section className="rounded-xl border border-linha p-4">
+    <section className="rounded-cartao border border-linha p-4">
       <h2 className="font-serif text-sm">{titulo}</h2>
-      <p className="mb-3 text-xs text-texto/50">{explicacao}</p>
+      <p className="mb-3 text-xs text-texto-suave">{explicacao}</p>
       <ul className="space-y-1 text-sm">
         {consultas.map((consulta) => (
-          <li key={consulta.id} className="text-texto/70">
+          <li key={consulta.id} className="text-texto-suave">
             {/* A data sai de `dataDaClinica`, não dos dez primeiros caracteres
                 do ISO: uma consulta às 21:00 de Brasília já é o dia seguinte em
                 UTC, e a lista mostraria a data errada. */}
@@ -294,9 +331,9 @@ function FormularioDeAgendamento({
   const semCadastro = pacientes.length === 0 || procedimentos.length === 0
 
   return (
-    <section className="rounded-xl border border-linha p-4">
+    <section className="rounded-cartao border border-linha bg-superficie p-4">
       <h2 className="mb-1 font-serif text-lg">Nova consulta</h2>
-      <p className="mb-4 text-sm text-texto/60">
+      <p className="mb-4 text-sm text-texto-suave">
         {formatarDataExtensa(escolha.dataISO)} às {hhmm(escolha.minutos)}. A duração vem do
         procedimento escolhido.
       </p>
@@ -304,13 +341,16 @@ function FormularioDeAgendamento({
       {/* O alerta fica acima do formulário, e não some ao trocar de campo: é
           nele que aparece o conflito de horário devolvido pela Server Action. */}
       {erro && (
-        <p role="alert" className="mb-4 rounded-lg border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+        <p
+          role="alert"
+          className="mb-4 rounded-cartao border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300"
+        >
           {erro}
         </p>
       )}
 
       {semCadastro ? (
-        <p className="text-sm text-texto/60">
+        <p className="text-sm text-texto-suave">
           Cadastre ao menos um paciente no funil e um procedimento no catálogo antes de agendar.
         </p>
       ) : (
@@ -341,7 +381,7 @@ function FormularioDeAgendamento({
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Paciente</span>
+              <RotuloMiudo>Paciente</RotuloMiudo>
               <select name="paciente" required defaultValue="" className={CAMPO}>
                 <option value="" disabled>
                   Escolha o paciente
@@ -355,7 +395,7 @@ function FormularioDeAgendamento({
             </label>
 
             <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Procedimento</span>
+              <RotuloMiudo>Procedimento</RotuloMiudo>
               <select name="procedimento" required defaultValue="" className={CAMPO}>
                 <option value="" disabled>
                   Escolha o procedimento
@@ -369,13 +409,13 @@ function FormularioDeAgendamento({
             </label>
           </div>
 
-          <div className="flex gap-2">
-            <button type="submit" disabled={pendente} className={BOTAO_PRINCIPAL}>
+          <div className="flex flex-wrap gap-2">
+            <Pilula type="submit" variante="solida" disabled={pendente}>
               {pendente ? 'Agendando…' : 'Agendar'}
-            </button>
-            <button type="button" onClick={aoFechar} disabled={pendente} className={BOTAO_DISCRETO}>
+            </Pilula>
+            <Pilula type="button" variante="contorno" onClick={aoFechar} disabled={pendente}>
               Cancelar
-            </button>
+            </Pilula>
           </div>
         </form>
       )}

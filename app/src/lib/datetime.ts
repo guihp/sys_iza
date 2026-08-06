@@ -184,6 +184,54 @@ export function formatarDataExtensaComAno(dataISO: string): string {
 }
 
 /**
+ * Nomes dos dias, indexados por `diaDaSemanaDaData` (0 = domingo).
+ *
+ * Tabela na mão, e não `Intl` com `weekday: 'long'`: em pt-BR o `Intl` devolve
+ * "quinta-feira", e a barra superior pede "Quinta, 6 de agosto". Cortar o
+ * "-feira" de um texto localizado é pior do que escrever os sete nomes.
+ */
+const DIAS_DA_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+
+/** Meses abreviados em pt-BR, indexados a partir de 0. Tabela na mão pelo mesmo motivo. */
+const MESES_CURTOS = [
+  'jan',
+  'fev',
+  'mar',
+  'abr',
+  'mai',
+  'jun',
+  'jul',
+  'ago',
+  'set',
+  'out',
+  'nov',
+  'dez',
+]
+
+/** `2026-08-06` → `Quinta, 6 de agosto`. A data de hoje na barra superior. */
+export function formatarDiaComData(dataISO: string): string {
+  return `${DIAS_DA_SEMANA[diaDaSemanaDaData(dataISO)]}, ${formatarDataExtensa(dataISO)}`
+}
+
+/**
+ * `2026-01-09` → `9 jan 26`.
+ *
+ * Forma curta da tabela de retornos (atendida em / previsto). Sem zero à
+ * esquerda no dia — o mockup escreve `9 jan 26`, não `09 jan 26`.
+ */
+export function formatarDataCurta(dataISO: string): string {
+  const [ano, mes, dia] = dataISO.split('-').map(Number)
+  return `${dia} ${MESES_CURTOS[mes - 1]} ${String(ano).slice(2)}`
+}
+
+/** Quantos dias tem o mês da data. Fevereiro bissexto sai certo pelo `Date`. */
+export function diasNoMes(dataISO: string): number {
+  const [ano, mes] = dataISO.split('-').map(Number)
+  // Dia 0 do mês seguinte é o último dia deste mês.
+  return new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+}
+
+/**
  * `YYYY-MM-DD` → o instante de meia-noite **UTC** daquele dia.
  *
  * Âncora de calendário, não conversão de fuso — e a diferença importa. O

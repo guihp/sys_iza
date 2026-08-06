@@ -6,8 +6,11 @@ import {
   deslocarData,
   diaDaSemanaDaData,
   diaDeCalendario,
+  diasNoMes,
+  formatarDataCurta,
   formatarDataExtensa,
   formatarDataExtensaComAno,
+  formatarDiaComData,
   horaDaClinica,
   instanteDaClinica,
   minutosDoDiaNaClinica,
@@ -173,6 +176,15 @@ describe('formatarDataExtensaComAno', () => {
   })
 })
 
+describe('formatarDataCurta', () => {
+  it('escreve dia mês abreviado e ano curto, sem zero à esquerda', () => {
+    // Forma da tabela de retornos: "9 jan 26", não "09 jan 26".
+    expect(formatarDataCurta('2026-01-09')).toBe('9 jan 26')
+    expect(formatarDataCurta('2026-06-09')).toBe('9 jun 26')
+    expect(formatarDataCurta('2026-12-03')).toBe('3 dez 26')
+  })
+})
+
 describe('diaDeCalendario e dataDoDiaDeCalendario', () => {
   it('ancoram a data na meia-noite UTC, sem fuso no meio', () => {
     expect(diaDeCalendario('2026-12-03').toISOString()).toBe('2026-12-03T00:00:00.000Z')
@@ -199,5 +211,26 @@ describe('diaDeCalendario e dataDoDiaDeCalendario', () => {
   it('dataDoDiaDeCalendario lê em UTC, não no fuso de quem roda o teste', () => {
     expect(dataDoDiaDeCalendario(new Date('2026-08-05T00:00:00.000Z'))).toBe('2026-08-05')
     expect(dataDoDiaDeCalendario(new Date('2026-08-05T23:59:59.000Z'))).toBe('2026-08-05')
+  })
+})
+
+describe('formatarDiaComData', () => {
+  it('escreve o dia da semana capitalizado e a data por extenso', () => {
+    // É o texto da barra superior. "quinta-feira" do Intl não serve.
+    expect(formatarDiaComData('2026-08-06')).toBe('Quinta, 6 de agosto')
+    expect(formatarDiaComData('2026-08-09')).toBe('Domingo, 9 de agosto')
+    expect(formatarDiaComData('2026-08-08')).toBe('Sábado, 8 de agosto')
+  })
+})
+
+describe('diasNoMes', () => {
+  it('conhece os meses curtos e os longos', () => {
+    expect(diasNoMes('2026-08-06')).toBe(31)
+    expect(diasNoMes('2026-04-01')).toBe(30)
+  })
+
+  it('acerta fevereiro dos dois tipos', () => {
+    expect(diasNoMes('2026-02-10')).toBe(28)
+    expect(diasNoMes('2028-02-10')).toBe(29)
   })
 })

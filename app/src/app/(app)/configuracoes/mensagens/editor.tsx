@@ -1,12 +1,24 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import type { Canal, ReminderKind } from '@/domain/reminders/plan-reminders'
+import {
+  CLASSES_CARTAO,
+  Cartao,
+  Pilula,
+  PilulaTexto,
+  RotuloMiudo,
+  juntar,
+} from '@/components/ui'
 import { alternarTemplate, salvarTemplate } from './acoes'
 import {
   GATILHOS,
+  NOME_DO_CANAL,
   avisosDeVariaveis,
+  gatilhoEstaAtivo,
+  inserirTrecho,
   previaDoTemplate,
+  rotuloDosCanais,
   validarTemplate,
   type Gatilho,
 } from './mensagens'
@@ -19,60 +31,145 @@ export type TemplateSalvo = {
   ativo: boolean
 }
 
-const CAMPO = 'w-full rounded-lg border border-linha bg-transparent px-3 py-2 text-sm'
-const BOTAO_PRINCIPAL = 'rounded-lg bg-acento px-4 py-2 text-sm text-white disabled:opacity-50'
-const BOTAO_DISCRETO = 'rounded-lg border border-linha px-3 py-1.5 text-sm hover:bg-superficie'
+const CAMPO =
+  'w-full rounded-[12px] border border-linha bg-transparent px-3 py-2 text-sm text-texto outline-none focus:border-acento focus-visible:ring-1 focus-visible:ring-acento'
 
-const NOME_DO_CANAL: Record<Canal, string> = { whatsapp: 'WhatsApp', email: 'E-mail' }
-
+/**
+ * Editor em duas colunas: gatilhos à esquerda, canais do selecionado à direita.
+ *
+ * A seleção vive em estado de cliente — a URL nunca carregou `?gatilho=`, e o
+ * padrão da tela até aqui era estado local. Os cartões dos gatilhos fora de
+ * foco ficam montados (`hidden`) para não perder rascunho ao trocar.
+ */
 export function EditorDeMensagens({ templates }: { templates: TemplateSalvo[] }) {
-  return (
-    <div className="space-y-8">
-      {GATILHOS.map((gatilho) => (
-        <section key={gatilho.kind} className="space-y-3">
-          <header className="space-y-1">
-            <h2 className="font-serif text-lg">{gatilho.titulo}</h2>
-            <p className="text-sm text-texto/55">{gatilho.quando}</p>
-          </header>
+  const [selecionado, setSelecionado] = useState<ReminderKind>(GATILHOS[0].kind)
+  const [ativos, setAtivos] = useState(() => mapaDeAtivos(templates))
 
-          {gatilho.canais.map((canal) => {
-            const salvo = templates.find((t) => t.kind === gatilho.kind && t.channel === canal)
+  return (
+    <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="space-y-3">
+        <RotuloMiudo>Gatilhos</RotuloMiudo>
+        <ul className="space-y-2">
+          {GATILHOS.map((item) => {
+            const ativo = gatilhoEstaAtivo(
+              item.kind,
+              item.canais.map((canal) => ({
+                kind: item.kind,
+                channel: canal,
+                ativo: ativos[chave(item.kind, canal)] ?? true,
+              })),
+            )
+            const marcado = item.kind === selecionado
             return (
-              <CartaoDeTemplate
-                key={`${gatilho.kind}:${canal}`}
-                gatilho={gatilho}
-                canal={canal}
-                salvo={salvo}
-              />
+              <li key={item.kind}>
+                <button
+                  type="button"
+                  onClick={() => setSelecionado(item.kind)}
+                  aria-current={marcado ? 'true' : undefined}
+                  className={juntar(
+                    CLASSES_CARTAO,
+                    'relative w-full p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-acento',
+                    marcado ? 'border-acento bg-superficie' : 'hover:border-acento/50',
+                  )}
+                >
+                  <RotuloMiudo tom="acento" className="absolute right-3.5 top-3.5">
+                    {ativo ? 'Ativo' : 'Desligado'}
+                  </RotuloMiudo>
+                  <p className="pr-16 font-serif text-[17px] leading-snug">{item.titulo}</p>
+                  <p className="mt-1.5 text-[12px] leading-snug text-texto-suave">
+                    {item.quando}
+                  </p>
+                  <p className="mt-2 text-[11px] text-texto-suave">
+                    {rotuloDosCanais(item.canais)}
+                  </p>
+                </button>
+              </li>
             )
           })}
-        </section>
-      ))}
+        </ul>
+      </aside>
+
+      <div className="min-w-0 space-y-4">
+        {GATILHOS.map((item) => (
+          <div
+            key={item.kind}
+            className={item.kind === selecionado ? 'space-y-4' : 'hidden'}
+            aria-hidden={item.kind !== selecionado}
+          >
+            {item.canais.map((canal) => {
+              const salvo = templates.find(
+                (t) => t.kind === item.kind && t.channel === canal,
+              )
+              return (
+                <CartaoDeTemplate
+                  key={`${item.kind}:${canal}`}
+                  gatilho={item}
+                  canal={canal}
+                  salvo={salvo}
+                  ativo={ativos[chave(item.kind, canal)] ?? true}
+                  aoAlternarAtivo={(desejado) =>
+                    setAtivos((atual) => ({
+                      ...atual,
+                      [chave(item.kind, canal)]: desejado,
+                    }))
+                  }
+                />
+              )
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
+function chave(kind: ReminderKind, canal: Canal): string {
+  return `${kind}:${canal}`
+}
+
+function mapaDeAtivos(templates: TemplateSalvo[]): Record<string, boolean> {
+  const mapa: Record<string, boolean> = {}
+  for (const item of GATILHOS) {
+    for (const canal of item.canais) {
+      const salvo = templates.find((t) => t.kind === item.kind && t.channel === canal)
+      mapa[chave(item.kind, canal)] = salvo?.ativo ?? true
+    }
+  }
+  return mapa
+}
+
 function CartaoDeTemplate({
-  gatilho,
+  gatilho: gatilhoAtual,
   canal,
   salvo,
+  ativo,
+  aoAlternarAtivo,
 }: {
   gatilho: Gatilho
   canal: Canal
   salvo: TemplateSalvo | undefined
+  ativo: boolean
+  aoAlternarAtivo: (desejado: boolean) => void
 }) {
   const [assunto, setAssunto] = useState(salvo?.assunto ?? '')
   const [corpo, setCorpo] = useState(salvo?.corpo ?? '')
-  const [ativo, setAtivo] = useState(salvo?.ativo ?? true)
+  // Baseline local: depois do Salvar o prop do servidor pode demorar um tick
+  // (revalidatePath). Sem isso o rodapé ficaria em SALVAR com texto já gravado.
+  const [baseline, setBaseline] = useState({
+    assunto: salvo?.assunto ?? '',
+    corpo: salvo?.corpo ?? '',
+  })
   const [erro, setErro] = useState<string | null>(null)
-  const [salvoAgora, setSalvoAgora] = useState(false)
   const [pendente, iniciarTransicao] = useTransition()
+  const refAssunto = useRef<HTMLInputElement>(null)
+  const refCorpo = useRef<HTMLTextAreaElement>(null)
+  const [campoFocado, setCampoFocado] = useState<'assunto' | 'corpo'>('corpo')
 
   // Sem `useMemo`: é uma varredura de regex sobre um parágrafo, a cada tecla. O
   // custo de memoizar seria maior que o de recalcular, e as três derivações
   // precisam estar sempre coerentes com o que está na tela.
   const entrada = {
-    kind: gatilho.kind,
+    kind: gatilhoAtual.kind,
     channel: canal,
     // O campo de assunto só existe no e-mail; no WhatsApp o banco exige nulo.
     assunto: canal === 'email' ? assunto : null,
@@ -84,13 +181,12 @@ function CartaoDeTemplate({
 
   // O assunto entra na conta junto com o corpo: um `{{data}}` digitado errado na
   // linha de assunto vira "Sua consulta é amanhã, " no cabeçalho do e-mail.
-  const avisos = avisosDeVariaveis(`${entrada.assunto ?? ''}\n${corpo}`, gatilho.kind)
+  const avisos = avisosDeVariaveis(`${entrada.assunto ?? ''}\n${corpo}`, gatilhoAtual.kind)
 
-  const alterado = corpo !== (salvo?.corpo ?? '') || assunto !== (salvo?.assunto ?? '')
+  const alterado = corpo !== baseline.corpo || assunto !== baseline.assunto
 
   function salvar() {
     setErro(null)
-    setSalvoAgora(false)
 
     // A mesma checagem roda de novo na Server Action. Aqui ela existe para a
     // frase aparecer sob o campo, sem viagem ao servidor.
@@ -99,10 +195,16 @@ function CartaoDeTemplate({
       return
     }
 
+    const valor = validacao.valor
+
     iniciarTransicao(async () => {
       try {
-        await salvarTemplate(validacao.valor)
-        setSalvoAgora(true)
+        await salvarTemplate(valor)
+        // O validador apara; alinhar o campo ao que foi gravado evita SALVAR
+        // aceso por causa de espaço sobrando nas pontas.
+        setAssunto(valor.assunto ?? '')
+        setCorpo(valor.corpo)
+        setBaseline({ assunto: valor.assunto ?? '', corpo: valor.corpo })
       } catch {
         // A mensagem do servidor pode carregar detalhe de banco; não vai à tela.
         setErro('Não foi possível salvar. Tente de novo.')
@@ -112,67 +214,102 @@ function CartaoDeTemplate({
 
   function alternar() {
     setErro(null)
-    setSalvoAgora(false)
     const desejado = !ativo
 
     iniciarTransicao(async () => {
       try {
-        await alternarTemplate({ kind: gatilho.kind, channel: canal }, desejado)
-        setAtivo(desejado)
+        await alternarTemplate({ kind: gatilhoAtual.kind, channel: canal }, desejado)
+        aoAlternarAtivo(desejado)
       } catch {
         setErro('Não foi possível alterar o envio deste lembrete.')
       }
     })
   }
 
-  const idCorpo = `corpo-${gatilho.kind}-${canal}`
-  const idAssunto = `assunto-${gatilho.kind}-${canal}`
+  function inserirVariavel(nome: string) {
+    const marcador = `{{${nome}}}`
+    const alvo =
+      canal === 'email' && campoFocado === 'assunto'
+        ? { valor: assunto, setValor: setAssunto, ref: refAssunto }
+        : { valor: corpo, setValor: setCorpo, ref: refCorpo }
+
+    const el = alvo.ref.current
+    const inicio = el?.selectionStart ?? alvo.valor.length
+    const fim = el?.selectionEnd ?? alvo.valor.length
+    const { texto, cursor } = inserirTrecho(alvo.valor, marcador, inicio, fim)
+    alvo.setValor(texto)
+
+    // Devolve o foco e a posição do cursor depois do React pintar o valor novo.
+    queueMicrotask(() => {
+      const campo = alvo.ref.current
+      if (!campo) return
+      campo.focus()
+      campo.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  const idCorpo = `corpo-${gatilhoAtual.kind}-${canal}`
+  const idAssunto = `assunto-${gatilhoAtual.kind}-${canal}`
 
   return (
-    <article className="space-y-4 rounded-xl border border-linha p-4">
+    <Cartao className="space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">
+        <h3 className="flex items-center gap-2 font-serif text-[20px] leading-none">
+          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-acento" />
           {NOME_DO_CANAL[canal]}
-          {!ativo && <span className="ml-2 text-xs text-texto/50">(desligado)</span>}
         </h3>
-        <button type="button" onClick={alternar} disabled={pendente} className={BOTAO_DISCRETO}>
-          {ativo ? 'Desligar envio' : 'Religar envio'}
-        </button>
+        <Pilula onClick={alternar} disabled={pendente}>
+          {ativo ? 'Desligar envio' : 'Ligar envio'}
+        </Pilula>
       </div>
 
       {canal === 'email' && (
-        <div className="space-y-1">
-          <label htmlFor={idAssunto} className="block text-sm text-texto/80">
-            Assunto
+        <div className="space-y-1.5">
+          <label htmlFor={idAssunto}>
+            <RotuloMiudo>Assunto</RotuloMiudo>
           </label>
           <input
             id={idAssunto}
+            ref={refAssunto}
             value={assunto}
             onChange={(evento) => setAssunto(evento.target.value)}
+            onFocus={() => setCampoFocado('assunto')}
             className={CAMPO}
           />
         </div>
       )}
 
-      <div className="space-y-1">
-        <label htmlFor={idCorpo} className="block text-sm text-texto/80">
-          Mensagem
+      <div className="space-y-1.5">
+        <label htmlFor={idCorpo}>
+          <RotuloMiudo>Mensagem</RotuloMiudo>
         </label>
         <textarea
           id={idCorpo}
+          ref={refCorpo}
           value={corpo}
           onChange={(evento) => setCorpo(evento.target.value)}
-          rows={4}
+          onFocus={() => setCampoFocado('corpo')}
+          rows={5}
           className={`${CAMPO} leading-relaxed`}
         />
-        <p className="text-xs text-texto/50">
-          Variáveis deste lembrete:{' '}
-          {gatilho.variaveis.map((nome) => `{{${nome}}}`).join(', ')}
-        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12px] text-texto-suave">Variáveis:</span>
+        {gatilhoAtual.variaveis.map((nome) => (
+          <button
+            key={nome}
+            type="button"
+            onClick={() => inserirVariavel(nome)}
+            className="rounded-full border border-linha bg-transparent px-2.5 py-1 text-[11px] text-texto-suave transition-colors hover:border-acento hover:text-acento focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-acento"
+          >
+            {`{{${nome}}}`}
+          </button>
+        ))}
       </div>
 
       {avisos.length > 0 && (
-        <ul role="status" className="space-y-1 text-xs text-amber-600">
+        <ul role="status" className="space-y-1 text-xs text-amber-700">
           {avisos.map((aviso) => (
             <li key={aviso.nome}>
               {aviso.motivo === 'desconhecida'
@@ -183,14 +320,14 @@ function CartaoDeTemplate({
         </ul>
       )}
 
-      <div className="space-y-1 rounded-lg bg-superficie p-3">
-        <p className="text-xs uppercase tracking-wide text-texto/45">
-          Como a paciente recebe
-        </p>
+      <div className="space-y-2 rounded-[12px] bg-acento-suave p-3.5">
+        <RotuloMiudo>Como a paciente recebe</RotuloMiudo>
         {previa.assunto !== null && (
-          <p className="text-sm font-medium">{previa.assunto}</p>
+          <p className="text-sm font-medium text-texto">{previa.assunto}</p>
         )}
-        <p className="whitespace-pre-wrap text-sm text-texto/80">{previa.corpo}</p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-texto/80">
+          {previa.corpo}
+        </p>
       </div>
 
       {!validacao.ok && (
@@ -205,19 +342,22 @@ function CartaoDeTemplate({
         </p>
       )}
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={salvar}
-          // Sem validação passando não há o que salvar: o banco recusaria, e o
-          // botão desligado diz isso antes do clique.
-          disabled={pendente || !validacao.ok || !alterado}
-          className={BOTAO_PRINCIPAL}
-        >
-          {pendente ? 'Salvando…' : 'Salvar'}
-        </button>
-        {salvoAgora && !alterado && <span className="text-sm text-texto/55">Salvo.</span>}
+      <div className="flex flex-wrap items-center gap-3">
+        {alterado ? (
+          <Pilula
+            variante="suave"
+            onClick={salvar}
+            // Sem validação passando não há o que salvar: o banco recusaria, e o
+            // botão desligado diz isso antes do clique.
+            disabled={pendente || !validacao.ok}
+          >
+            {pendente ? 'Salvando…' : 'Salvar'}
+          </Pilula>
+        ) : (
+          <PilulaTexto role="status">Salvo</PilulaTexto>
+        )}
+        <p className="text-[11px] text-texto-suave">Texto sincronizado com os envios.</p>
       </div>
-    </article>
+    </Cartao>
   )
 }

@@ -23,8 +23,16 @@ export type AtendimentoDoPaciente = {
   atendimentoId: string
   pacienteId: string
   paciente: string
+  /** Apelido do cadastro — entra no texto pré-preenchido do WhatsApp. */
+  apelido: string | null
   telefone: string | null
   procedimento: string
+  /**
+   * `procedures.default_return_interval_days` do atendimento. Alimenta o
+   * "ciclo de N meses" na coluna do procedimento; `null` quando o catálogo
+   * não define retorno (a linha ainda pode existir por ajuste manual).
+   */
+  intervaloRetornoDias: number | null
   /** Instante ISO em que o atendimento foi realizado. */
   realizadoEm: string
   /**
