@@ -17,6 +17,9 @@ const NAVEGACAO: ItemDeNavegacao[] = [
   // adianta oferecer à secretária um link para uma tela que ela não opera.
   { href: '/configuracoes/procedimentos', rotulo: 'Procedimentos', papeis: ['dra'] },
   { href: '/configuracoes/mensagens', rotulo: 'Mensagens', papeis: ['dra'] },
+  // Sincronia opcional com o Google Agenda: é a agenda pessoal da Dra. que está
+  // do outro lado, e a tela mostra com qual conta o sistema fala com o Google.
+  { href: '/configuracoes/google', rotulo: 'Google Agenda', papeis: ['dra'] },
 ]
 
 /** Função pura: o menu é derivado do papel, não escondido com CSS. */

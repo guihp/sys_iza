@@ -8,6 +8,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { criarEvolutionClient } from '@/integrations/evolution/client'
 import { criarEmailClient } from '@/integrations/email/resend'
+import { criarGoogleCalendarClient } from '@/integrations/google/calendar'
 
 /** `pnpm test` roda com o cwd em `app/`. */
 const RAIZ_SRC = path.resolve(process.cwd(), 'src')
@@ -22,6 +23,17 @@ describe('guarda de servidor em tempo de execução', () => {
 
   it('o cliente de e-mail se recusa a existir no browser', () => {
     expect(() => criarEmailClient({ apiKey: 'k', remetente: 'a@b.com' })).toThrow(/servidor/i)
+  })
+
+  it('o cliente do Google Agenda se recusa a existir no browser', () => {
+    // A guarda vem ANTES da checagem de configuração: mesmo no modo desligado,
+    // em que a fábrica devolveria `null`, importar isto de um Client Component
+    // é um erro que precisa aparecer no primeiro render — a chave privada dá
+    // escrita na agenda da Dra. para sempre.
+    expect(() =>
+      criarGoogleCalendarClient({ clientEmail: 'a@b.iam.gserviceaccount.com', privateKey: 'k', calendarId: 'c' }),
+    ).toThrow(/servidor/i)
+    expect(() => criarGoogleCalendarClient(null)).toThrow(/servidor/i)
   })
 })
 

@@ -9,7 +9,14 @@ const secretaria: Sessao = { userId: 'u2', nome: 'Ana', role: 'secretaria' }
 describe('itensDeNavegacao', () => {
   it('dá à dra o menu inteiro, incluindo configurações', () => {
     const rotulos = itensDeNavegacao('dra').map((item) => item.rotulo)
-    expect(rotulos).toEqual(['Funil', 'Agenda', 'Retornos', 'Procedimentos', 'Mensagens'])
+    expect(rotulos).toEqual([
+      'Funil',
+      'Agenda',
+      'Retornos',
+      'Procedimentos',
+      'Mensagens',
+      'Google Agenda',
+    ])
   })
 
   it('esconde da secretária o que ela não pode acessar', () => {
@@ -17,6 +24,7 @@ describe('itensDeNavegacao', () => {
     expect(rotulos).toEqual(['Funil', 'Agenda', 'Retornos'])
     expect(rotulos).not.toContain('Procedimentos')
     expect(rotulos).not.toContain('Mensagens')
+    expect(rotulos).not.toContain('Google Agenda')
   })
 })
 

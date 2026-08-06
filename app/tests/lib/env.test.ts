@@ -28,3 +28,40 @@ describe('parseServerEnv', () => {
     expect(() => parseServerEnv({ ...completo, EMAIL_FROM: 'nao-e-email' })).toThrow(/EMAIL_FROM/)
   })
 })
+
+describe('parseServerEnv — Google Agenda opcional', () => {
+  it('sobe sem nenhuma variável do Google', () => {
+    // A clínica não tem projeto no Google Cloud, e o sistema roda inteiro
+    // assim. Se estas variáveis fossem obrigatórias, `parseServerEnv` lançaria
+    // e derrubaria login, agenda e lembretes junto.
+    const env = parseServerEnv(completo)
+    expect(env.GOOGLE_SERVICE_ACCOUNT_EMAIL).toBeUndefined()
+    expect(env.GOOGLE_PRIVATE_KEY).toBeUndefined()
+    expect(env.GOOGLE_CALENDAR_ID).toBeUndefined()
+  })
+
+  it('trata variável vazia como ausente', () => {
+    // Painel de deploy grava campo em branco como string vazia, não como
+    // ausente. Sem esta normalização, deixar o campo do Google visível e vazio
+    // no Coolify quebraria a subida do container.
+    const env = parseServerEnv({
+      ...completo,
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: '',
+      GOOGLE_PRIVATE_KEY: '   ',
+      GOOGLE_CALENDAR_ID: '',
+    })
+    expect(env.GOOGLE_SERVICE_ACCOUNT_EMAIL).toBeUndefined()
+    expect(env.GOOGLE_PRIVATE_KEY).toBeUndefined()
+    expect(env.GOOGLE_CALENDAR_ID).toBeUndefined()
+  })
+
+  it('aceita as três quando a sincronia é ligada', () => {
+    const env = parseServerEnv({
+      ...completo,
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: 'agenda@x.iam.gserviceaccount.com',
+      GOOGLE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n',
+      GOOGLE_CALENDAR_ID: 'izadora@clinicaizadora.com.br',
+    })
+    expect(env.GOOGLE_CALENDAR_ID).toBe('izadora@clinicaizadora.com.br')
+  })
+})

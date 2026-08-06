@@ -6,6 +6,7 @@ import { requireSessao } from '@/auth/session'
 import { detectarConflito, type Slot } from '@/domain/scheduling/conflict'
 import { validarHorarioDeAtendimento } from '@/domain/scheduling/working-hours'
 import { dataDaClinica, deslocarData, horaDaClinica, instanteDaClinica } from '@/lib/datetime'
+import { sincronizarConsultaNoGoogle } from '@/lib/google-agenda'
 import { planejarLembretesDaConsulta } from '@/lib/lembretes'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -176,6 +177,16 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
     patientId: dados.pacienteId,
     inicio,
   })
+
+  // Espelho no Google Agenda, para a Dra. ver o horário no celular junto com o
+  // resto da vida dela. Efeito colateral best-effort, o último de todos e o mais
+  // dispensável: a agenda de verdade é a tabela `appointments`.
+  //
+  // Sem try/catch aqui porque `sincronizarConsultaNoGoogle` já garante não
+  // lançar — o try/catch dela envolve até a leitura do ambiente. Quando não há
+  // credencial configurada, que é o estado da clínica hoje, ela sai calada: sem
+  // erro na tela e sem uma linha de log a cada consulta marcada.
+  await sincronizarConsultaNoGoogle(supabase, consulta.id)
 
   revalidatePath(CAMINHO_AGENDA)
   revalidatePath(CAMINHO_FUNIL)

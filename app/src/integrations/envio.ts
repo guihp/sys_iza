@@ -23,6 +23,12 @@
  * de configuração do sistema — a equipe não consegue resolver relendo o cadastro
  * da paciente.
  *
+ * Apesar do nome, a taxonomia daqui não é exclusiva de mensagem ao paciente: o
+ * adaptador do Google Agenda (`@/integrations/google/calendar`) reutiliza
+ * `classificarStatus`, `sanitizarMensagem` e `ErroDeEnvio`. A regra é a mesma —
+ * o que é transitório precisa ter UMA definição no projeto inteiro — e só a
+ * forma da requisição muda (lá há PATCH e DELETE, e resposta 204 sem corpo).
+ *
  * Módulo de servidor/worker. Nada aqui pode ser importado por Client Component:
  * ver `garantirServidor()` no fim do arquivo.
  */
@@ -186,7 +192,7 @@ export const TIMEOUT_PADRAO_MS = 15_000
  * a causa verdadeira (`ECONNREFUSED`, `ENOTFOUND`) um nível abaixo. Sem
  * desembrulhar, toda falha de rede viraria a mesma mensagem inútil na tela.
  */
-function descreverCausa(causa: unknown): string {
+export function descreverCausa(causa: unknown): string {
   if (causa instanceof Error) {
     const raiz = (causa as { cause?: unknown }).cause
     const detalhe = raiz instanceof Error ? ` (${raiz.message})` : ''
@@ -195,7 +201,7 @@ function descreverCausa(causa: unknown): string {
   return String(causa)
 }
 
-function ehInterrupcaoPorTempo(causa: unknown): boolean {
+export function ehInterrupcaoPorTempo(causa: unknown): boolean {
   const nome = (causa as { name?: string } | null)?.name
   return nome === 'TimeoutError' || nome === 'AbortError'
 }
@@ -205,7 +211,7 @@ function ehInterrupcaoPorTempo(causa: unknown): boolean {
  * projeto, mas a checagem evita quebrar num ambiente de teste que substitua os
  * globais: envio sem timeout é pior que envio sem sinal de aborto.
  */
-function sinalDeTimeout(ms: number): AbortSignal | undefined {
+export function sinalDeTimeout(ms: number): AbortSignal | undefined {
   return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
     ? AbortSignal.timeout(ms)
     : undefined
