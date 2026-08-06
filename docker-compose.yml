@@ -1,0 +1,80 @@
+# Deploy do sistema da Clínica Izadora — dois serviços a partir deste repositório.
+#
+# Este arquivo fica na raiz de propósito: é onde o Coolify procura por padrão, e
+# é o que faz o contexto de build ser o repositório inteiro (o Dockerfile.web
+# copia de `app/`, então o contexto precisa enxergar essa pasta).
+#
+# As variáveis abaixo vêm do painel do Coolify (aba Environment Variables). Nada
+# de arquivo .env no servidor: o Coolify injeta na hora do build e do run.
+# Veja DEPLOY.md para o passo a passo e a lista completa de variáveis.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      # NEXT_PUBLIC_* é inlinada no bundle em BUILD TIME pelo Turbopack. Passar
+      # só como variável de runtime deixa `undefined` compilado dentro da
+      # imagem, e o client do Supabase quebra no browser. Por isso vira ARG.
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?obrigatoria}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?obrigatoria}
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?obrigatoria}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?obrigatoria}
+      SUPABASE_URL: ${SUPABASE_URL:?obrigatoria}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?obrigatoria}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?obrigatoria}
+      EVOLUTION_URL: ${EVOLUTION_URL:?obrigatoria}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:?obrigatoria}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:?obrigatoria}
+      RESEND_API_KEY: ${RESEND_API_KEY:?obrigatoria}
+      EMAIL_FROM: ${EMAIL_FROM:?obrigatoria}
+      APP_TZ: ${APP_TZ:-America/Sao_Paulo}
+    # `expose` e não `ports`: quem publica para a internet é o proxy do Coolify,
+    # com o domínio configurado no painel. Publicar na porta do host aqui só
+    # abriria o app direto, por fora do TLS.
+    expose:
+      - "3000"
+    healthcheck:
+      # /login é público e não depende de sessão — é o que responde 200 com o
+      # app realmente de pé. `start_period` cobre a subida do Next.
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks: [interna]
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:?obrigatoria}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?obrigatoria}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?obrigatoria}
+      EVOLUTION_URL: ${EVOLUTION_URL:?obrigatoria}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:?obrigatoria}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:?obrigatoria}
+      RESEND_API_KEY: ${RESEND_API_KEY:?obrigatoria}
+      EMAIL_FROM: ${EMAIL_FROM:?obrigatoria}
+      APP_TZ: ${APP_TZ:-America/Sao_Paulo}
+    # O worker trata SIGTERM esperando o ciclo em andamento terminar. 30s é
+    # folgado para isso e fica acima do limite interno de 20s dele.
+    stop_grace_period: 30s
+    restart: unless-stopped
+    networks: [interna]
+
+networks:
+  # A Evolution API fica fechada na rede interna da VPS, sem porta publicada —
+  # é assim que ela não fica exposta. Para o app alcançá-la, os dois containers
+  # entram na MESMA rede onde n8n e Evolution já rodam.
+  #
+  # Confirme o nome real na VPS antes do primeiro deploy:
+  #     docker network ls
+  # e ajuste REDE_INTERNA no painel do Coolify se não for `n8n_default`.
+  interna:
+    external: true
+    name: ${REDE_INTERNA:-n8n_default}

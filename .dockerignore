@@ -1,0 +1,24 @@
+# O contexto de build é a raiz do repositório. Sem esta lista, o Docker envia
+# node_modules, .next e — o que importa de verdade — os arquivos .env com as
+# chaves do Supabase para dentro da imagem.
+
+**/node_modules
+**/.next
+**/dist
+**/.git
+**/.turbo
+
+# Segredos. O .env.example é o único que sobe, e ele só tem placeholder.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Nada disso serve em runtime e só engorda a imagem.
+**/tests
+**/*.test.ts
+**/*.test.tsx
+**/coverage
+docs/
+*.pdf
+**/.DS_Store
+**/supabase/.temp
