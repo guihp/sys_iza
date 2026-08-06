@@ -136,6 +136,28 @@ cd app && pnpm supabase migration list
 
 ---
 
+## 4.1. Parear o WhatsApp da clínica
+
+A instância da Evolution (`EVOLUTION_INSTANCE`) precisa estar **conectada a um
+telefone** antes de qualquer lembrete sair. Ter a URL e a chave certas não
+basta: uma instância criada mas nunca pareada fica em `state: close`, e todo
+envio falha.
+
+Quem pareia é a Dra., pelo painel da Evolution: abrir a instância, gerar o QR e
+ler com **WhatsApp → Dispositivos conectados → Conectar dispositivo**. O QR
+expira em cerca de 40 segundos; se vencer, é só gerar outro.
+
+Para conferir o estado a qualquer momento, sem pareamento:
+
+```bash
+curl -s -H "apikey: $EVOLUTION_API_KEY" \
+  "$EVOLUTION_URL/instance/connectionState/$EVOLUTION_INSTANCE"
+```
+
+`"state":"open"` é conectado. `close` ou `connecting` significam que o WhatsApp
+ainda não está pareado — e nesse estado o worker vai acumular falha a cada
+ciclo.
+
 ## 5. Primeiro acesso
 
 Não existe cadastro público — é sistema fechado, com dois papéis (`dra` e
@@ -178,10 +200,17 @@ tempo do worker antigo terminar o ciclo em curso antes do SIGKILL.
 
 ## 7. Pendências conhecidas
 
-- **Credenciais de Evolution e Resend ainda não foram configuradas.** Sem elas o
-  app sobe e funciona (cadastro, agenda, prontuário), mas nenhum lembrete sai —
-  o worker vai acumular falha classificada como `credencial`, que é permanente e
-  não retenta.
+- **WhatsApp ainda não pareado.** As credenciais da Evolution foram conferidas e
+  respondem, mas a instância nunca foi conectada a um telefone (`state: close`).
+  Ver a seção 4.1 — é a Dra. quem faz, pelo painel da Evolution. Até lá o app
+  funciona inteiro (cadastro, agenda, prontuário) e só os lembretes não saem.
+- **`EMAIL_FROM` está provisório.** A chave do Resend é *send-only*, então não dá
+  para descobrir o domínio verificado pela API. O valor em uso é
+  `onboarding@resend.dev`, o sandbox do Resend: ele entrega **apenas para o
+  e-mail dono da conta**, nunca para uma paciente. Trocar pelo endereço real da
+  clínica assim que o domínio estiver verificado no Resend (é um registro DNS).
+- **Nenhum envio real foi testado de ponta a ponta** — depende dos dois itens
+  acima.
 - **Nenhuma imagem foi buildada ainda** (ver aviso no topo).
 - **Jobs presos em `enviando`** não voltam sozinhos para a fila. É deliberado:
   não dá para distinguir "morreu antes de enviar" de "enviou e morreu antes de
