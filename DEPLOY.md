@@ -51,6 +51,41 @@ exceto onde indicado.
 | `APP_TZ` | — | opcional, default `America/Sao_Paulo` |
 | `REDE_INTERNA` | passo 1 | opcional, default `n8n_default` |
 
+### Google Agenda — opcional, desligado por padrão
+
+A sincronia de consultas com o Google Agenda só liga se as **três** variáveis
+abaixo estiverem preenchidas. Faltando qualquer uma — ou com qualquer uma vazia
+— ela fica desligada e o sistema funciona normalmente, sem erro em tela e sem
+log a cada agendamento.
+
+| Variável | Onde encontrar |
+|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | JSON da conta de serviço, campo `client_email` |
+| `GOOGLE_PRIVATE_KEY` | JSON da conta de serviço, campo `private_key` (PEM; aceita `\n` escrito) |
+| `GOOGLE_CALENDAR_ID` | ID da agenda no Google Agenda |
+
+Não existe default para `GOOGLE_CALENDAR_ID` de propósito: `primary` numa conta
+de serviço é a agenda dela mesma, e os eventos sumiriam em silêncio.
+
+Passo a passo do lado do Google (também está na tela `/configuracoes/google`):
+
+1. Criar projeto no Google Cloud e habilitar a **Google Calendar API**.
+2. Criar uma **conta de serviço** → Chaves → gerar chave JSON.
+3. No Google Agenda, **compartilhar a agenda** com o `client_email` da conta de
+   serviço, com permissão "Fazer alterações em eventos". Sem esse passo o Google
+   recusa a escrita, mesmo com as credenciais certas.
+4. Preencher as três variáveis no Coolify e redeployar.
+
+> **Falta no `.env.example`:** as três linhas abaixo não puderam ser gravadas
+> pela automação (arquivos `.env` são bloqueados por permissão nesta máquina).
+> Adicione à mão se quiser o exemplo completo:
+>
+> ```
+> GOOGLE_SERVICE_ACCOUNT_EMAIL=
+> GOOGLE_PRIVATE_KEY=
+> GOOGLE_CALENDAR_ID=
+> ```
+
 ### As duas `NEXT_PUBLIC_*` precisam ser Build Variables
 
 Não é detalhe de configuração — é a diferença entre o app funcionar e não
