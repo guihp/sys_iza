@@ -16,6 +16,7 @@ describe('itensDeNavegacao', () => {
       'Funil',
       'Agenda',
       'Retornos',
+      'Marketing',
       'Procedimentos',
       'Marca',
       'Mensagens',
@@ -30,6 +31,9 @@ describe('itensDeNavegacao', () => {
     expect(rotulos).not.toContain('Marca')
     expect(rotulos).not.toContain('Mensagens')
     expect(rotulos).not.toContain('Google Agenda')
+    // Marketing mostra gasto, faturamento e CAC — é informação de dona do
+    // negócio, e a rota devolve `notFound()` para ela.
+    expect(rotulos).not.toContain('Marketing')
   })
 })
 

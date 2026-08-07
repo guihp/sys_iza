@@ -16,9 +16,20 @@ const cheios: ContadoresDaCasca = {
   mensagensAtivas: 7,
 }
 
-const funil = itensDeNavegacao('dra')[0]
-const agenda = itensDeNavegacao('dra')[1]
-const google = itensDeNavegacao('dra')[6]
+/**
+ * Buscados por `href`, e não por posição: o menu ganha item com o tempo — a
+ * Marketing entrou depois de Retornos — e um índice fixo faria estes testes
+ * apontarem para outro item sem nem falhar.
+ */
+function item(href: string): ItemDeNavegacao {
+  const encontrado = itensDeNavegacao('dra').find((candidato) => candidato.href === href)
+  if (!encontrado) throw new Error(`item ${href} não está no menu da dra`)
+  return encontrado
+}
+
+const funil = item('/crm')
+const agenda = item('/agenda')
+const google = item('/configuracoes/google')
 
 describe('formatarContador', () => {
   it('devolve o número para o item que conta alguma coisa', () => {
@@ -36,6 +47,9 @@ describe('formatarContador', () => {
 
   it('não inventa contador para item que não tem', () => {
     expect(formatarContador(google, cheios)).toBeNull()
+    // Marketing também não conta nada: o número que importaria ali é o gasto, e
+    // gasto não cabe no formato de contagem do menu.
+    expect(formatarContador(item('/marketing'), cheios)).toBeNull()
   })
 
   it('trata número inválido como ausência, em vez de escrever NaN na tela', () => {

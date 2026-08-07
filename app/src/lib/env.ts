@@ -87,6 +87,30 @@ const serverSchema = z.object({
    * de verdade do plano — e precisa ser apagada depois.
    */
   META_TEST_EVENT_CODE: opcional(),
+
+  // ---------------------------------------------------------------------------
+  // Meta Marketing API — a página /marketing, OPCIONAL
+  // ---------------------------------------------------------------------------
+  // Terceiro interruptor independente dos dois de cima, e é de propósito: são
+  // credenciais diferentes, com escopos diferentes, criadas em telas diferentes
+  // do Business. O token da CAPI ESCREVE conversão no dataset; este aqui só LÊ
+  // gasto da conta de anúncios. Ligar um não liga o outro, e a página de
+  // marketing acende sozinha — sem dataset nenhum — assim que este existir.
+  /**
+   * Token de usuário do sistema com `ads_read`. Segredo; nunca vai para a tela.
+   *
+   * É o ÚNICO interruptor da página: sem ele a rota existe, explica o que falta
+   * e não chama a Meta. Business → Usuários do sistema → gerar token.
+   */
+  META_ADS_TOKEN: opcional(),
+  /**
+   * ID da conta de anúncios, sem o prefixo `act_` (o adaptador acrescenta).
+   *
+   * NÃO é interruptor: em branco cai em `CONTA_DE_ANUNCIOS_PADRAO`, que é a
+   * conta da clínica levantada no plano. Existe para o dia em que a conta mudar
+   * — trocar variável no painel é mais rápido do que um deploy.
+   */
+  META_AD_ACCOUNT_ID: opcional(),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>

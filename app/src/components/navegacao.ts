@@ -44,6 +44,13 @@ const NAVEGACAO: ItemDeNavegacao[] = [
   { href: '/crm', rotulo: 'Funil', contador: 'funil' },
   { href: '/agenda', rotulo: 'Agenda', contador: 'agendaHoje' },
   { href: '/retornos', rotulo: 'Retornos', contador: 'retornosVencidos' },
+  // Marketing fica com as telas de operação, e não com as de configuração, por
+  // causa do que ela é: relatório que se lê toda semana, não ajuste que se faz
+  // uma vez. Exclusiva da dra — a tela mostra quanto a clínica gasta, quanto
+  // fatura e quanto custa cada paciente, que é informação de dona do negócio.
+  // Sem contador: o número que importaria ali é o gasto, e gasto não cabe no
+  // formato de contagem do menu.
+  { href: '/marketing', rotulo: 'Marketing', papeis: ['dra'] },
   // Configurações são de escrita exclusiva da dra (ver `exigirDra`): não
   // adianta oferecer à secretária um link para uma tela que ela não opera.
   { href: '/configuracoes/procedimentos', rotulo: 'Procedimentos', papeis: ['dra'] },
