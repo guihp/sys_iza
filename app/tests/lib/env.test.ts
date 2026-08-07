@@ -65,3 +65,41 @@ describe('parseServerEnv — Google Agenda opcional', () => {
     expect(env.GOOGLE_CALENDAR_ID).toBe('izadora@clinicaizadora.com.br')
   })
 })
+
+describe('parseServerEnv — Meta Conversions API opcional', () => {
+  it('sobe sem nenhuma variável da Meta', () => {
+    // Não há dataset nem token de CAPI, e não vai haver até a Dra. criar os
+    // dois. Obrigatórias, estas variáveis derrubariam login, agenda e lembretes
+    // por causa de um canal de marketing que ninguém ligou.
+    const env = parseServerEnv(completo)
+    expect(env.META_DATASET_ID).toBeUndefined()
+    expect(env.META_CAPI_TOKEN).toBeUndefined()
+    expect(env.META_WHATSAPP_BUSINESS_ACCOUNT_ID).toBeUndefined()
+    expect(env.META_GRAPH_API_VERSION).toBeUndefined()
+    expect(env.META_TEST_EVENT_CODE).toBeUndefined()
+  })
+
+  it('trata variável vazia como ausente', () => {
+    // Deixar os campos da Meta visíveis e em branco no painel do Coolify não
+    // pode quebrar a subida do container.
+    const env = parseServerEnv({
+      ...completo,
+      META_DATASET_ID: '',
+      META_CAPI_TOKEN: '   ',
+      META_TEST_EVENT_CODE: '',
+    })
+    expect(env.META_DATASET_ID).toBeUndefined()
+    expect(env.META_CAPI_TOKEN).toBeUndefined()
+    expect(env.META_TEST_EVENT_CODE).toBeUndefined()
+  })
+
+  it('aceita o par que liga o envio', () => {
+    const env = parseServerEnv({
+      ...completo,
+      META_DATASET_ID: '1234567890',
+      META_CAPI_TOKEN: 'EAAG0token',
+    })
+    expect(env.META_DATASET_ID).toBe('1234567890')
+    expect(env.META_CAPI_TOKEN).toBe('EAAG0token')
+  })
+})

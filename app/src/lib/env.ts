@@ -42,6 +42,51 @@ const serverSchema = z.object({
   GOOGLE_PRIVATE_KEY: opcional(),
   /** E-mail da agenda de destino, compartilhada com a conta de serviço. */
   GOOGLE_CALENDAR_ID: opcional(),
+
+  // ---------------------------------------------------------------------------
+  // Meta Conversions API — envio de conversão OPCIONAL
+  // ---------------------------------------------------------------------------
+  // Mesmo desenho do Google, pelo mesmo motivo e com a mesma consequência: hoje
+  // a clínica não tem dataset nem token de CAPI, e o sistema roda inteiro assim.
+  // Marcar como obrigatório derrubaria login, agenda e lembretes por causa de um
+  // canal de marketing que ninguém ligou ainda.
+  //
+  // As DUAS primeiras andam juntas: `configuracaoDaMeta` só liga o envio quando
+  // ambas estão presentes (ver `@/integrations/meta/capi`). Faltando qualquer
+  // uma, o worker nem consulta a fila — não há log de pânico a cada ciclo.
+  /** ID do dataset do Gerenciador de Eventos. É o `{DATASET_ID}` da URL da CAPI. */
+  META_DATASET_ID: opcional(),
+  /** Token de acesso gerado dentro do dataset. Segredo; nunca vai para a tela. */
+  META_CAPI_TOKEN: opcional(),
+
+  // As três abaixo são refinamentos, não interruptores: a integração liga sem
+  // elas.
+  /**
+   * ID da conta do WhatsApp Business (WABA).
+   *
+   * Vai em `user_data.whatsapp_business_account_id`. NÃO está na lista oficial de
+   * parâmetros de `user_data` da Meta, mas aparece no payload de todas as
+   * integrações de terceiros de CTWA — ver o comentário em
+   * `montarEventoDaCapi`. Opcional exatamente por causa dessa incerteza: com ela
+   * o campo vai, sem ela o evento sai igual e a validação se faz no Teste de
+   * Eventos.
+   */
+  META_WHATSAPP_BUSINESS_ACCOUNT_ID: opcional(),
+  /**
+   * Versão da Graph API na URL. Padrão em `VERSAO_PADRAO_DA_API`.
+   *
+   * Existe para o dia em que a versão fixada no código for descontinuada: trocar
+   * uma variável no painel é mais rápido do que um deploy.
+   */
+  META_GRAPH_API_VERSION: opcional(),
+  /**
+   * Código da aba "Teste de Eventos" do Gerenciador.
+   *
+   * Preenchida, TODO evento passa a chegar como teste e NÃO conta como conversão
+   * de verdade. É para a sessão de conferência do dia da configuração — a fonte
+   * de verdade do plano — e precisa ser apagada depois.
+   */
+  META_TEST_EVENT_CODE: opcional(),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>

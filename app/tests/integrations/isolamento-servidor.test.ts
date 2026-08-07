@@ -9,6 +9,7 @@ import path from 'node:path'
 import { criarEvolutionClient } from '@/integrations/evolution/client'
 import { criarEmailClient } from '@/integrations/email/resend'
 import { criarGoogleCalendarClient } from '@/integrations/google/calendar'
+import { criarMetaCapiClient } from '@/integrations/meta/capi'
 
 /** `pnpm test` roda com o cwd em `app/`. */
 const RAIZ_SRC = path.resolve(process.cwd(), 'src')
@@ -34,6 +35,14 @@ describe('guarda de servidor em tempo de execução', () => {
       criarGoogleCalendarClient({ clientEmail: 'a@b.iam.gserviceaccount.com', privateKey: 'k', calendarId: 'c' }),
     ).toThrow(/servidor/i)
     expect(() => criarGoogleCalendarClient(null)).toThrow(/servidor/i)
+  })
+
+  it('o cliente da Conversions API se recusa a existir no browser', () => {
+    // Mesmo argumento do Google: a guarda vem antes da checagem de configuração.
+    // O `META_CAPI_TOKEN` escreve conversões no dataset da clínica, e no bundle
+    // do cliente ele estaria à vista de qualquer um que abrisse o DevTools.
+    expect(() => criarMetaCapiClient({ datasetId: '1', token: 'tok' })).toThrow(/servidor/i)
+    expect(() => criarMetaCapiClient(null)).toThrow(/servidor/i)
   })
 })
 
