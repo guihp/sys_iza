@@ -47,6 +47,7 @@ const NAVEGACAO: ItemDeNavegacao[] = [
   // Configurações são de escrita exclusiva da dra (ver `exigirDra`): não
   // adianta oferecer à secretária um link para uma tela que ela não opera.
   { href: '/configuracoes/procedimentos', rotulo: 'Procedimentos', papeis: ['dra'] },
+  { href: '/configuracoes/marca', rotulo: 'Marca', papeis: ['dra'] },
   {
     href: '/configuracoes/mensagens',
     rotulo: 'Mensagens',

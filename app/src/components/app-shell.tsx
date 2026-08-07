@@ -31,6 +31,8 @@ export type DadosDaCasca = {
   realizadoDoMesCentavos?: number
   /** `YYYY-MM-DD` no calendário da clínica. Ausente = hoje. */
   hojeISO?: string
+  /** Logo pública (`/marca/...`). Ausente = filete dourado. */
+  logoUrl?: string | null
 }
 
 /**
@@ -54,6 +56,7 @@ export function AppShell({
   contadores,
   realizadoDoMesCentavos = 0,
   hojeISO,
+  logoUrl = null,
   children,
 }: { sessao: Sessao; children: React.ReactNode } & DadosDaCasca) {
   const itens = itensDeNavegacao(sessao.role)
@@ -68,7 +71,16 @@ export function AppShell({
         className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-r border-linha bg-fundo px-6 py-8"
       >
         <div>
-          <span aria-hidden="true" className="mb-4 block h-0.5 w-10 bg-acento" />
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- upload local
+            <img
+              src={logoUrl}
+              alt="Logo da clínica"
+              className="mb-4 h-9 w-auto max-w-[140px] object-contain"
+            />
+          ) : (
+            <span aria-hidden="true" className="mb-4 block h-0.5 w-10 bg-acento" />
+          )}
           <p className="font-serif text-[22px] leading-tight">Dra. Izadora Barros</p>
           <RotuloMiudo className="mt-2 block leading-[1.7]">
             Estética avançada ·<br />

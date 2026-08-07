@@ -1,0 +1,126 @@
+/* Animações do Login.dc.html (versão clara). */
+
+@keyframes login-aurora {
+  0% {
+    transform: translate3d(-6%, -4%, 0) scale(1.05) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(6%, 5%, 0) scale(1.18) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-6%, -4%, 0) scale(1.05) rotate(0deg);
+  }
+}
+
+@keyframes login-aurora2 {
+  0% {
+    transform: translate3d(5%, 6%, 0) scale(1.2);
+  }
+  50% {
+    transform: translate3d(-5%, -6%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(5%, 6%, 0) scale(1.2);
+  }
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes login-line-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes login-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  55% {
+    transform: translateX(220%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+@keyframes login-float {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.login-aurora {
+  animation: login-aurora 22s ease-in-out infinite;
+}
+
+.login-aurora2 {
+  animation: login-aurora2 28s ease-in-out infinite;
+}
+
+.login-rise {
+  animation: login-rise 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.login-rise-delay {
+  animation: login-rise 1s 0.25s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.login-rise-card {
+  animation: login-rise 0.9s 0.15s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.login-line {
+  transform-origin: left;
+  animation: login-line-in 1.1s 0.2s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.login-sheen {
+  animation: login-sheen 3.6s 1.2s ease-in-out infinite;
+}
+
+.login-float {
+  animation: login-float 9s ease-in-out infinite;
+}
+
+.login-campo:focus {
+  border-color: #a17c4b;
+  box-shadow: 0 0 0 3px rgba(161, 124, 75, 0.13);
+}
+
+.login-campo:-webkit-autofill {
+  -webkit-text-fill-color: #1b1815;
+  -webkit-box-shadow: 0 0 0 60px #ffffff inset;
+  caret-color: #1b1815;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-aurora,
+  .login-aurora2,
+  .login-rise,
+  .login-rise-delay,
+  .login-rise-card,
+  .login-line,
+  .login-sheen,
+  .login-float {
+    animation: none !important;
+  }
+}

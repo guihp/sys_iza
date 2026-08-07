@@ -14,7 +14,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         {/* Antes da primeira pintura: evita o flash claro de quem já escolheu o escuro. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      {/* Extensões (ex.: ColorZilla) injetam attrs no <body> antes do hydrate. */}
+      <body className="flex min-h-full flex-col font-sans" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   )
 }

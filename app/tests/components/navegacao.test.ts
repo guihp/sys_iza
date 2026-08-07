@@ -18,7 +18,7 @@ const cheios: ContadoresDaCasca = {
 
 const funil = itensDeNavegacao('dra')[0]
 const agenda = itensDeNavegacao('dra')[1]
-const google = itensDeNavegacao('dra')[5]
+const google = itensDeNavegacao('dra')[6]
 
 describe('formatarContador', () => {
   it('devolve o número para o item que conta alguma coisa', () => {

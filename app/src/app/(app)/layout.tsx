@@ -1,6 +1,7 @@
 import { requireSessao } from '@/auth/session'
 import { AppShell } from '@/components/app-shell'
 import { carregarDadosDaCasca } from '@/components/shell-dados'
+import { carregarMarca } from '@/lib/marca'
 
 /**
  * Layout de tudo que exige login. `requireSessao()` é a autorização de
@@ -14,7 +15,10 @@ import { carregarDadosDaCasca } from '@/components/shell-dados'
  */
 export default async function LayoutProtegido({ children }: { children: React.ReactNode }) {
   const sessao = await requireSessao()
-  const { contadores, realizadoDoMesCentavos, hojeISO } = await carregarDadosDaCasca(sessao)
+  const [{ contadores, realizadoDoMesCentavos, hojeISO }, marca] = await Promise.all([
+    carregarDadosDaCasca(sessao),
+    carregarMarca(),
+  ])
 
   return (
     <AppShell
@@ -22,6 +26,7 @@ export default async function LayoutProtegido({ children }: { children: React.Re
       contadores={contadores}
       realizadoDoMesCentavos={realizadoDoMesCentavos}
       hojeISO={hojeISO}
+      logoUrl={marca.logoUrl}
     >
       {children}
     </AppShell>

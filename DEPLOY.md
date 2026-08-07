@@ -51,6 +51,32 @@ exceto onde indicado.
 | `APP_TZ` | — | opcional, default `America/Sao_Paulo` |
 | `REDE_INTERNA` | passo 1 | opcional, default `n8n_default` |
 
+### Meta Ads — opcional, desligado por padrão
+
+Sem `META_DATASET_ID` **e** `META_CAPI_TOKEN`, a integração fica desligada: o
+worker não consulta a fila, loga uma linha no boot e nada mais. O sistema
+funciona inteiro.
+
+| Variável | Onde encontrar | Sem ela |
+|---|---|---|
+| `META_DATASET_ID` | Gerenciador de Eventos → seu dataset | desligada |
+| `META_CAPI_TOKEN` | dentro do dataset → Configurações → Gerar token | desligada |
+| `META_WHATSAPP_BUSINESS_ACCOUNT_ID` | Config. do Business → contas do WhatsApp | envia sem o identificador do canal |
+| `META_GRAPH_API_VERSION` | — | usa `v25.0` |
+| `META_TEST_EVENT_CODE` | Gerenciador de Eventos → Teste de Eventos | evento conta como produção |
+
+`META_TEST_EVENT_CODE` só deve ser preenchida **durante a conferência**. Com ela
+preenchida os eventos vão para a aba de teste e não contam para otimização;
+esquecê-la ligada é o jeito silencioso de a Meta nunca aprender nada.
+
+Três campos do payload são suposição e precisam ser validados no Teste de
+Eventos na primeira conexão — estão comentados um a um em
+`src/integrations/meta/payload.ts`. A documentação da Meta para CAPI de
+mensagens respondeu 404 quando foi consultada.
+
+Para a página de marketing (ainda não construída) será preciso um terceiro
+token, de Marketing API com `ads_read`, gerado por usuário do sistema.
+
 ### Google Agenda — opcional, desligado por padrão
 
 A sincronia de consultas com o Google Agenda só liga se as **três** variáveis

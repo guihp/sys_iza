@@ -17,6 +17,7 @@ describe('itensDeNavegacao', () => {
       'Agenda',
       'Retornos',
       'Procedimentos',
+      'Marca',
       'Mensagens',
       'Google Agenda',
     ])
@@ -26,6 +27,7 @@ describe('itensDeNavegacao', () => {
     const rotulos = itensDeNavegacao('secretaria').map((item) => item.rotulo)
     expect(rotulos).toEqual(['Funil', 'Agenda', 'Retornos'])
     expect(rotulos).not.toContain('Procedimentos')
+    expect(rotulos).not.toContain('Marca')
     expect(rotulos).not.toContain('Mensagens')
     expect(rotulos).not.toContain('Google Agenda')
   })
