@@ -107,7 +107,13 @@ Nó **HTTP Request** (o nó nativo do Supabase não expõe o cabeçalho de confl
 que precisamos).
 
 - Método: `POST`
-- URL: `https://mcdzuspmhqzftmnocjlp.supabase.co/rest/v1/lead_attribution`
+- URL: `https://mcdzuspmhqzftmnocjlp.supabase.co/rest/v1/lead_attribution?on_conflict=telefone`
+
+  **O `?on_conflict=telefone` não é opcional.** Sem ele o PostgREST não sabe qual
+  constraint o `ignore-duplicates` deve absorver, ignora o `Prefer` e devolve
+  **409** na segunda mensagem. Verificado contra o banco real em 2026-08-06: sem
+  o parâmetro dá 409, com ele dá 201 e a linha original fica intacta.
+
 - Cabeçalhos:
   - `apikey`: a **service_role key** (o n8n escreve fora de sessão de usuário;
     a RLS da tabela não tem policy de escrita para papel humano de propósito)

@@ -13,7 +13,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://mcdzuspmhqzftmnocjlp.supabase.co/rest/v1/lead_attribution",
+        "url": "https://mcdzuspmhqzftmnocjlp.supabase.co/rest/v1/lead_attribution?on_conflict=telefone",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
