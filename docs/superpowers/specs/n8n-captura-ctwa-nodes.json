@@ -1,0 +1,44 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Captura da atribuição de anúncio (ctwa_clid) — Clínica Izadora.\n// Entra: payload cru do webhook `messages.upsert` da Evolution.\n// Sai: [] quando não for mensagem vinda de anúncio (conversa orgânica).\n\nconst saida = [];\n\nfor (const item of $input.all()) {\n  const data = item.json.body?.data ?? item.json.data;\n  const anuncio = data?.contextInfo?.externalAdReply;\n\n  // Sem ctwaClid não é lead de anúncio. Sai sem erro — é o caso comum.\n  if (!anuncio?.ctwaClid) continue;\n\n  // remoteJid pode vir como LID (addressingMode: 'lid'), que NÃO é o telefone.\n  // Quando remoteJidAlt existe, ele é o número real.\n  const jid = data.key?.remoteJidAlt || data.key?.remoteJid || '';\n  const telefone = normalizarE164BR(jid.split('@')[0]);\n  if (!telefone) continue;\n\n  // messageTimestamp vem em SEGUNDOS. Tratar como milissegundos joga o evento\n  // para 1970 e a Meta descarta sem avisar.\n  const segundos = Number(data.messageTimestamp);\n  const primeiroContato = Number.isFinite(segundos)\n    ? new Date(segundos * 1000).toISOString()\n    : new Date().toISOString();\n\n  saida.push({\n    json: {\n      telefone,\n      ctwa_clid: anuncio.ctwaClid,\n      ad_id: anuncio.sourceId ?? null,\n      source_app: anuncio.sourceApp ?? null,\n      source_url: anuncio.sourceUrl ?? null,\n      ad_title: anuncio.title ?? null,\n      ad_body: anuncio.body ?? null,\n      greeting_message: anuncio.greetingMessageBody ?? null,\n      push_name: data.pushName ?? null,\n      primeiro_contato_em: primeiroContato,\n    },\n  });\n}\n\nreturn saida;\n\n// Espelha src/lib/phone.ts do app. Mantenha os dois iguais: se divergirem, o\n// mesmo número vira duas linhas e a atribuição se perde.\nfunction normalizarE164BR(bruto) {\n  let d = String(bruto || '').replace(/\\D/g, '');\n  // Só tira o 55 do começo se sobrarem 12+ dígitos. Sem esse piso, o DDD 55\n  // (Santa Maria/RS) seria comido como código de país.\n  if (d.length >= 12 && d.startsWith('55')) d = d.slice(2);\n  if (d.length === 11 && d.startsWith('0')) d = d.slice(1);\n  if (d.length !== 10 && d.length !== 11) return null;\n  return '+55' + d;\n}"
+      },
+      "id": "c1a7f0e2-3b4d-4f10-9a21-0e6b8d2c5a91",
+      "name": "Extrai atribuicao do anuncio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mcdzuspmhqzftmnocjlp.supabase.co/rest/v1/lead_attribution",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "COLE_AQUI_A_SERVICE_ROLE_KEY" },
+            { "name": "Authorization", "value": "Bearer COLE_AQUI_A_SERVICE_ROLE_KEY" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=ignore-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "d2b8a1f3-4c5e-4021-8b32-1f7c9e3d6b02",
+      "name": "Grava no Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 460],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Extrai atribuicao do anuncio": {
+      "main": [[{ "node": "Grava no Supabase", "type": "main", "index": 0 }]]
+    }
+  }
+}
