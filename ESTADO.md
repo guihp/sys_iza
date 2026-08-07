@@ -67,10 +67,15 @@ global, KPIs, categoria de procedimento). Falta: dashboard como destino do
 login, e o cadastro de paciente direto pela agenda.
 
 **Atribuição da Meta** — plano em `docs/superpowers/plans/2026-08-06-atribuicao-meta-ads.md`.
-Passos 1, 2 e 3 prontos (schema `lead_attribution` + `meta_conversion_jobs`,
-spec do n8n, domínio puro em `src/domain/marketing/`). Passo 4 (adaptador CAPI)
-em execução. Passos 5 e 6 (página `/marketing`, tela de configuração) travados
-esperando credencial.
+Passos 1 a 4 **prontos**: schema `lead_attribution` + `meta_conversion_jobs`,
+spec do n8n, domínio puro em `src/domain/marketing/`, adaptador da CAPI em
+`src/integrations/meta/`, despacho no worker, e o enfileiramento ligado aos
+quatro pontos onde o funil muda (`crm/acoes.ts`, `agenda/acoes.ts`,
+`pacientes/[id]/acoes.ts`, `components/lead/acoes.ts`).
+
+Falta: passo 5 (página `/marketing`) e passo 6 (tela de configuração). Ambos
+travados esperando credencial. A cadeia inteira já funciona de ponta a ponta —
+só não acende sem `META_DATASET_ID` e `META_CAPI_TOKEN`.
 
 ## 5. O que está travado, e por quem
 
