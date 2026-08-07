@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { exigirDra, ErroDePermissao } from '@/auth/guard'
 import { getSessao } from '@/auth/session'
 import { calcularRetorno } from '@/domain/returns/compute-return'
+import { enfileirarConversoes } from '@/lib/conversoes'
 import { dataDaClinica, dataDoDiaDeCalendario, diaDeCalendario } from '@/lib/datetime'
 import { planejarLembretesDoAtendimento } from '@/lib/lembretes'
 import { createServerClient } from '@/lib/supabase/server'
@@ -88,7 +89,11 @@ export async function registrarAtendimento(entrada: unknown): Promise<ResultadoD
   // não tem.
   const { data: procedimento, error: erroProcedimento } = await supabase
     .from('procedures')
-    .select('id, default_return_interval_days')
+    // `preco_centavos` entra por causa do `Purchase` da Meta: o valor sai do
+    // CATÁLOGO, nunca do formulário, e é arredondado à centena pelo domínio
+    // antes de atravessar — o valor exato revelaria a faixa de preço e, com ela,
+    // o procedimento.
+    .select('id, default_return_interval_days, preco_centavos')
     .eq('id', dados.procedimentoId)
     .single()
 
@@ -159,6 +164,16 @@ export async function registrarAtendimento(entrada: unknown): Promise<ResultadoD
 
   // Quem foi atendido é paciente, não mais lead nem agendado. O estágio
   // 'retorno' é da fila, e quem move para lá é o acompanhamento do vencimento.
+  //
+  // O estágio de antes é lido primeiro: é ele que decide se este atendimento
+  // fecha a escada (`compareceu → paciente`, só o `Purchase`) ou se a paciente
+  // pulou degraus e os intermediários também precisam sair.
+  const { data: pacienteAntes } = await supabase
+    .from('patients')
+    .select('stage')
+    .eq('id', dados.pacienteId)
+    .single()
+
   await supabase.from('patients').update({ stage: 'paciente' }).eq('id', dados.pacienteId)
 
   await supabase.from('audit_log').insert({
@@ -182,6 +197,22 @@ export async function registrarAtendimento(entrada: unknown): Promise<ResultadoD
     patientId: dados.pacienteId,
     realizadoEm: agora,
     retornoVencimento: vencimento,
+  })
+
+  // Conversão para a Meta: o `Purchase`, o degrau mais fundo do funil. Vai com o
+  // preço do catálogo em centavos; o domínio arredonda à centena e o adaptador
+  // converte para reais. Nada do prontuário viaja junto — `EntradaDoFunil` não
+  // tem campo para região tratada, quantidade nem observação, e é por isso que
+  // esta chamada pode ficar ao lado do `insert` do prontuário sem risco.
+  //
+  // Best-effort e sem try/catch, pelo mesmo critério do status da agenda, do
+  // estágio do funil e dos lembretes acima: o prontuário é o dado que importa.
+  await enfileirarConversoes(supabase, {
+    patientId: dados.pacienteId,
+    estagioAnterior: (pacienteAntes as { stage: string } | null)?.stage ?? null,
+    estagioNovo: 'paciente',
+    valorCentavos: procedimento.preco_centavos,
+    ocorridoEm: agora,
   })
 
   revalidatePath(`/pacientes/${dados.pacienteId}`)

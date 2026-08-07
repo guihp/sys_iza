@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireSessao } from '@/auth/session'
+import { vincularAtribuicaoAoPaciente } from '@/lib/conversoes'
 import { normalizarTelefone } from '@/lib/phone'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -78,6 +79,17 @@ export async function criarLead(formData: FormData): Promise<ResultadoDoLead> {
     entidade: 'patients',
     registro_id: data.id,
   })
+
+  // O sentido mais comum do vínculo: a mensagem do anúncio chegou ANTES do
+  // cadastro, o n8n gravou a atribuição com o telefone e `patient_id` nulo, e
+  // agora a secretária acabou de digitar a mesma pessoa. Ligar aqui é o que
+  // permite o primeiro movimento do funil dela já sair creditado ao anúncio.
+  //
+  // Best-effort e não lança: `vincularAtribuicaoAoPaciente` devolve resultado.
+  // Lead cadastrado é o dado que importa, e nada de marketing pode derrubá-lo.
+  // O caminho contrário — cadastro primeiro, mensagem depois — é resolvido pelo
+  // próprio `enfileirarConversoes`, que revincula a cada movimento do funil.
+  await vincularAtribuicaoAoPaciente(data.id, e164)
 
   // Layout inteiro, e não só `/crm`: o contador de leads ativos na sidebar é
   // renderizado no layout protegido, e o botão NOVO LEAD é apertado de qualquer

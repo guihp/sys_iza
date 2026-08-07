@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { requireSessao } from '@/auth/session'
 import { detectarConflito, type Slot } from '@/domain/scheduling/conflict'
 import { validarHorarioDeAtendimento } from '@/domain/scheduling/working-hours'
+import { enfileirarConversoes } from '@/lib/conversoes'
 import { dataDaClinica, deslocarData, horaDaClinica, instanteDaClinica } from '@/lib/datetime'
 import { sincronizarConsultaNoGoogle } from '@/lib/google-agenda'
 import { planejarLembretesDaConsulta } from '@/lib/lembretes'
@@ -153,6 +154,15 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
   // relação de agora, e a Task 8 move para 'compareceu' quando a consulta
   // acontecer. Falha aqui não desfaz o agendamento: a consulta marcada é o dado
   // que importa, o cartão do kanban se corrige no arrasto.
+  //
+  // O estágio de antes é lido primeiro porque é ele que diz quantos degraus o
+  // funil subiu — e `Schedule` é justamente o evento por que a Meta otimiza.
+  const { data: pacienteAntes } = await supabase
+    .from('patients')
+    .select('stage')
+    .eq('id', dados.pacienteId)
+    .single()
+
   await supabase.from('patients').update({ stage: 'agendado' }).eq('id', dados.pacienteId)
 
   await supabase.from('audit_log').insert({
@@ -187,6 +197,18 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
   // credencial configurada, que é o estado da clínica hoje, ela sai calada: sem
   // erro na tela e sem uma linha de log a cada consulta marcada.
   await sincronizarConsultaNoGoogle(supabase, consulta.id)
+
+  // Conversão para a Meta. `Schedule` é o evento por que a clínica decidiu
+  // otimizar, então este é o ponto mais importante da corrente inteira — e
+  // ainda assim é best-effort, pelo mesmo critério de tudo que veio depois do
+  // `insert`: a consulta marcada é o dado que importa, e derrubá-la por causa
+  // de um evento de marketing deixaria a secretária com a paciente na linha e
+  // sem horário. `enfileirarConversoes` não lança; ver o contrato do módulo.
+  await enfileirarConversoes(supabase, {
+    patientId: dados.pacienteId,
+    estagioAnterior: (pacienteAntes as { stage: string } | null)?.stage ?? null,
+    estagioNovo: 'agendado',
+  })
 
   revalidatePath(CAMINHO_AGENDA)
   revalidatePath(CAMINHO_FUNIL)
