@@ -67,27 +67,41 @@ global, KPIs, categoria de procedimento). Falta: dashboard como destino do
 login, e o cadastro de paciente direto pela agenda.
 
 **Atribuição da Meta** — plano em `docs/superpowers/plans/2026-08-06-atribuicao-meta-ads.md`.
-Passos 1 a 4 **prontos**: schema `lead_attribution` + `meta_conversion_jobs`,
-spec do n8n, domínio puro em `src/domain/marketing/`, adaptador da CAPI em
-`src/integrations/meta/`, despacho no worker, e o enfileiramento ligado aos
-quatro pontos onde o funil muda (`crm/acoes.ts`, `agenda/acoes.ts`,
-`pacientes/[id]/acoes.ts`, `components/lead/acoes.ts`).
+Passos 1 a 5 **prontos**:
 
-Falta: passo 5 (página `/marketing`) e passo 6 (tela de configuração). Ambos
-travados esperando credencial. A cadeia inteira já funciona de ponta a ponta —
-só não acende sem `META_DATASET_ID` e `META_CAPI_TOKEN`.
+1. Schema `lead_attribution` + `meta_conversion_jobs` (migration `0010`).
+2. Spec do n8n, com os nós prontos para colar em
+   `docs/superpowers/specs/n8n-captura-ctwa-nodes.json`.
+3. Domínio puro em `src/domain/marketing/` — mapa estágio→evento, guarda de
+   consentimento, hash, arredondamento de valor.
+4. Adaptador da CAPI em `src/integrations/meta/`, despacho no worker, e o
+   enfileiramento ligado aos quatro pontos onde o funil muda (`crm/acoes.ts`,
+   `agenda/acoes.ts`, `pacientes/[id]/acoes.ts`, `components/lead/acoes.ts`).
+5. Página `/marketing`, somente leitura, cruzando gasto da Marketing API com o
+   funil daqui por `ad_id` — CAC real e ROI por anúncio.
+
+**As credenciais da Meta já existem e foram verificadas** (2026-08-06): dataset
+`1735170690969038`, `META_CAPI_TOKEN` e `META_ADS_TOKEN` no `.env.local`. O token
+de anúncios lê as campanhas; o de CAPI aceita POST em `/events`.
+
+Falta: passo 6 (tela de configuração da Meta — liga/desliga e estado do dataset)
+e o n8n do lado do dono.
 
 ## 5. O que está travado, e por quem
 
 | Trava | Quem destrava | Consequência de não ter |
 |---|---|---|
 | WhatsApp não pareado (instância `izadoraClinica`, `state: close`) | a Dra., pelo painel da Evolution | nenhum lembrete sai |
-| `EMAIL_FROM` está no sandbox do Resend | dono verificar domínio no Resend | e-mail só chega para o dono da conta |
-| Dataset da Meta não existe | dono, no Gerenciador de Eventos | nenhum evento de conversão sai |
-| Token de CAPI | dono, dentro do dataset | idem |
-| Token de Marketing API (`ads_read`) | dono, usuário do sistema | página `/marketing` não lê gasto |
-| `ctwa_clid` não é capturado | dono, no n8n | não há como ligar paciente a anúncio |
-| Credenciais do Google OAuth | dono, no Google Cloud | sincronia de agenda fica desligada |
+| `EMAIL_FROM` está no sandbox do Resend (`onboarding@resend.dev`) | dono verificar domínio no Resend | e-mail só chega para o dono da conta, nunca para paciente |
+| `ctwa_clid` ainda não é capturado em produção | dono, colando os nós no n8n | não há como ligar paciente a anúncio |
+| Deploy no Coolify | dono | o sistema só roda local |
+| Repositório está público | dono | schema e lógica de acesso visíveis |
+| Chaves que passaram pelo chat não foram rotacionadas | dono | Evolution e Resend expostos no histórico |
+| Credenciais do Google OAuth | dono, no Google Cloud | sincronia de agenda fica desligada (opcional) |
+
+**Destravado em 2026-08-06:** dataset da Meta, token de CAPI e token de
+Marketing API já existem, estão no `.env.local` e foram verificados contra a
+Graph API.
 
 Regra que atravessa o sistema: **integração sem credencial fica desligada, não
 quebrada.** O app sobe e funciona inteiro; só a parte dependente não acende.
