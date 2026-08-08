@@ -31,15 +31,33 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:?obrigatoria}
       EMAIL_FROM: ${EMAIL_FROM:?obrigatoria}
       APP_TZ: ${APP_TZ:-America/Sao_Paulo}
+      # Opcionais — vazias desligam o recurso (ver DEPLOY.md). Sem estas
+      # linhas o Coolify não injeta no container mesmo que estejam no painel.
+      META_DATASET_ID: ${META_DATASET_ID:-}
+      META_CAPI_TOKEN: ${META_CAPI_TOKEN:-}
+      META_WHATSAPP_BUSINESS_ACCOUNT_ID: ${META_WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-}
+      META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE:-}
+      META_ADS_TOKEN: ${META_ADS_TOKEN:-}
+      META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID:-}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}
+      GOOGLE_PRIVATE_KEY: ${GOOGLE_PRIVATE_KEY:-}
+      GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-}
     # `expose` e não `ports`: quem publica para a internet é o proxy do Coolify,
     # com o domínio configurado no painel. Publicar na porta do host aqui só
     # abriria o app direto, por fora do TLS.
     expose:
       - "3000"
     healthcheck:
-      # /login é público e não depende de sessão — é o que responde 200 com o
-      # app realmente de pé. `start_period` cobre a subida do Next.
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/login"]
+      # /login é público e não depende de sessão. Usa o `node` da imagem (fetch
+      # nativo) em vez de wget — node:alpine nem sempre traz wget/busybox wget.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/login').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -61,6 +79,11 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:?obrigatoria}
       EMAIL_FROM: ${EMAIL_FROM:?obrigatoria}
       APP_TZ: ${APP_TZ:-America/Sao_Paulo}
+      META_DATASET_ID: ${META_DATASET_ID:-}
+      META_CAPI_TOKEN: ${META_CAPI_TOKEN:-}
+      META_WHATSAPP_BUSINESS_ACCOUNT_ID: ${META_WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-}
+      META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE:-}
     # O worker trata SIGTERM esperando o ciclo em andamento terminar. 30s é
     # folgado para isso e fica acima do limite interno de 20s dele.
     stop_grace_period: 30s

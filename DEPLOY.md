@@ -64,6 +64,8 @@ funciona inteiro.
 | `META_WHATSAPP_BUSINESS_ACCOUNT_ID` | Config. do Business → contas do WhatsApp | envia sem o identificador do canal |
 | `META_GRAPH_API_VERSION` | — | usa `v25.0` |
 | `META_TEST_EVENT_CODE` | Gerenciador de Eventos → Teste de Eventos | evento conta como produção |
+| `META_ADS_TOKEN` | Business → Usuários do sistema → token `ads_read` | `/marketing` fica desligada |
+| `META_AD_ACCOUNT_ID` | conta de anúncios (sem `act_`) | usa a conta padrão do código |
 
 `META_TEST_EVENT_CODE` só deve ser preenchida **durante a conferência**. Com ela
 preenchida os eventos vão para a aba de teste e não contam para otimização;
@@ -74,8 +76,9 @@ Eventos na primeira conexão — estão comentados um a um em
 `src/integrations/meta/payload.ts`. A documentação da Meta para CAPI de
 mensagens respondeu 404 quando foi consultada.
 
-Para a página de marketing (ainda não construída) será preciso um terceiro
-token, de Marketing API com `ads_read`, gerado por usuário do sistema.
+Para a página `/marketing` é preciso um token de Marketing API com `ads_read`
+(`META_ADS_TOKEN`), gerado por usuário do sistema. Sem ele a rota sobe e
+explica o que falta — não quebra o resto do sistema.
 
 ### Google Agenda — opcional, desligado por padrão
 
@@ -101,16 +104,6 @@ Passo a passo do lado do Google (também está na tela `/configuracoes/google`):
    serviço, com permissão "Fazer alterações em eventos". Sem esse passo o Google
    recusa a escrita, mesmo com as credenciais certas.
 4. Preencher as três variáveis no Coolify e redeployar.
-
-> **Falta no `.env.example`:** as três linhas abaixo não puderam ser gravadas
-> pela automação (arquivos `.env` são bloqueados por permissão nesta máquina).
-> Adicione à mão se quiser o exemplo completo:
->
-> ```
-> GOOGLE_SERVICE_ACCOUNT_EMAIL=
-> GOOGLE_PRIVATE_KEY=
-> GOOGLE_CALENDAR_ID=
-> ```
 
 ### As duas `NEXT_PUBLIC_*` precisam ser Build Variables
 
@@ -150,9 +143,17 @@ aparece sem URL, e é isso mesmo.
 cd app && pnpm supabase db push
 ```
 
-As migrations `0001` a `0008` já estão aplicadas no projeto
-`mcdzuspmhqzftmnocjlp`. Rode o comando acima sempre que uma nova entrar no
-repositório, **antes** de dar deploy do código que depende dela.
+As migrations `0001` a `0010` já estão aplicadas no projeto
+`mcdzuspmhqzftmnocjlp`. O conteúdo de `0011_prontuario_clinico` também já está
+no banco (aplicado sob a versão `20260808154348`). Se `migration list` mostrar
+a `0011` local como pendente, alinhe o histórico com:
+
+```bash
+cd app && pnpm supabase migration repair --status applied 0011
+```
+
+Rode `db push` sempre que uma migration **nova** entrar no repositório,
+**antes** de dar deploy do código que depende dela.
 
 Para conferir o que está aplicado:
 

@@ -4,7 +4,7 @@ Documento de passagem de bastão. Se você é uma IA (ou uma pessoa) chegando ag
 neste repositório, comece por aqui: o que o sistema é, o que já funciona, o que
 está pela metade, o que está travado e por quê.
 
-Última atualização: **2026-08-06**.
+Última atualização: **2026-08-08**.
 
 ---
 
@@ -26,8 +26,8 @@ a atribuição de anúncios da Meta.
 | App | `app/` — Next.js **16.3.0**, React 19, Tailwind v4, pnpm |
 | Worker | `app/worker/` — laço de 5 min, processo separado |
 | Banco | Supabase, project ref `mcdzuspmhqzftmnocjlp` |
-| Migrations | `app/supabase/migrations/`, **0001 a 0010 aplicadas** |
-| Deploy | Coolify, ver `DEPLOY.md` |
+| Migrations | `app/supabase/migrations/`, **0001 a 0010 aplicadas**; conteúdo de `0011` já no banco (versão remota `20260808154348` — ver `DEPLOY.md`) |
+| Deploy | Coolify, ver `DEPLOY.md` (compose + Dockerfiles prontos; falta o dono criar o recurso e preencher envs) |
 
 Documentos:
 
