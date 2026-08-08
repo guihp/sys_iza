@@ -171,7 +171,7 @@ export default async function PaginaDeRetornos({
                   key={chip.id}
                   href={`/retornos?filtro=${chip.id}`}
                   variante={ativo ? 'contorno' : 'suave'}
-                  className={ativo ? 'border-acento text-acento' : undefined}
+                  className={ativo ? 'min-h-11 border-acento text-acento' : 'min-h-11'}
                   aria-current={ativo ? 'page' : undefined}
                 >
                   {ativo ? (

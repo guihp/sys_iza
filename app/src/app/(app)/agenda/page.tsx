@@ -106,11 +106,11 @@ export default async function PaginaDaAgenda({
   const kpis = kpisDaSemana(consultas, dias, hoje)
 
   return (
-    <section className="space-y-6">
+    <section className="flex flex-col gap-6">
       <CabecalhoDePagina
         secao="Semana clínica"
         titulo="Agenda"
-        descricao="Clique num horário livre para marcar. Horário ocupado ou fora do expediente é recusado com o motivo — a conferência acontece no servidor, não só na tela."
+        descricao="Use Nova consulta ou clique num horário livre na grade. Horário ocupado ou fora do expediente é recusado com o motivo — a conferência acontece no servidor, não só na tela."
         kpis={
           <>
             <Kpi rotulo="Atendimentos" valor={kpis.atendimentos} sublegenda="nesta semana" />

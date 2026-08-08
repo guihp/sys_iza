@@ -53,7 +53,12 @@ export function ThemeToggle() {
   // (`uppercase`), não do texto. O rótulo continua sendo "Escuro"/"Claro" no
   // DOM — trocá-lo por "ESCURO" mudaria o que o leitor de tela soletra.
   return (
-    <Pilula variante="contorno" onClick={alternar} aria-label="Alternar tema">
+    <Pilula
+      variante="contorno"
+      onClick={alternar}
+      aria-label="Alternar tema"
+      className="min-h-11 px-4"
+    >
       {tema === 'claro' ? 'Escuro' : 'Claro'}
     </Pilula>
   )

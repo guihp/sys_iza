@@ -49,16 +49,17 @@ const DIAS_DA_SEMANA = [
  * daqui saem a validação do agendamento e as faixas clicáveis da grade da
  * agenda, então as duas não têm como divergir.
  *
- * Domingo fechado; sábado só de manhã.
+ * TEMPORÁRIO: todos os dias 08:00–20:00 (inclui sábado à tarde e domingo).
+ * Quando existir a tela de configuração, esta constante vira só o default.
  */
 export const HORARIO_PADRAO: HorarioDeAtendimento = [
-  [], // domingo
+  [{ de: '08:00', ate: '20:00' }], // domingo
   [{ de: '08:00', ate: '20:00' }], // segunda
   [{ de: '08:00', ate: '20:00' }], // terça
   [{ de: '08:00', ate: '20:00' }], // quarta
   [{ de: '08:00', ate: '20:00' }], // quinta
   [{ de: '08:00', ate: '20:00' }], // sexta
-  [{ de: '08:00', ate: '13:00' }], // sábado
+  [{ de: '08:00', ate: '20:00' }], // sábado
 ]
 
 /** `'08:30'` → `510`. */

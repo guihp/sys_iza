@@ -1,28 +1,93 @@
 'use client'
 
-import { useState, useTransition, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, useTransition, type ChangeEvent } from 'react'
 import { Cartao, Pilula, RotuloMiudo } from '@/components/ui'
 import type { MarcaDaClinica } from '@/lib/marca'
 import { removerFotoDoLogin, removerLogo, salvarFotoDoLogin, salvarLogo } from './acoes'
 
 /**
  * Formulário de marca — foto do login e logo.
- * Upload local; prévia imediata depois do save (revalidate).
+ *
+ * O `<input type="file">` nativo **sempre** volta a "Nenhum arquivo escolhido"
+ * depois do reload (o browser não deixa pré-preencher). Por isso o status real
+ * mora no texto ao lado ("Foto salva", "Prévia…"), não no input.
  */
+
+type Resultado =
+  | { ok: true; marca: MarcaDaClinica }
+  | { ok: false; erro: string }
+
+function nomeDoArquivo(url: string | null): string | null {
+  if (!url) return null
+  const pedaco = url.split('/').pop()
+  return pedaco && pedaco.length > 0 ? pedaco : null
+}
 
 export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClinica }) {
   const [marca, setMarca] = useState(marcaInicial)
+  const [previaHero, setPreviaHero] = useState<string | null>(null)
+  const [arquivoHero, setArquivoHero] = useState<File | null>(null)
+  const [previaLogo, setPreviaLogo] = useState<string | null>(null)
+  const [arquivoLogo, setArquivoLogo] = useState<File | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
+  const inputHero = useRef<HTMLInputElement>(null)
+  const inputLogo = useRef<HTMLInputElement>(null)
+  const idHero = useId()
+  const idLogo = useId()
 
-  function enviar(
-    evento: FormEvent<HTMLFormElement>,
-    acao: (dados: FormData) => Promise<{ ok: true; marca: MarcaDaClinica } | { ok: false; erro: string }>,
-    sucesso: string,
+  useEffect(() => {
+    setMarca(marcaInicial)
+  }, [marcaInicial])
+
+  useEffect(() => {
+    return () => {
+      if (previaHero) URL.revokeObjectURL(previaHero)
+      if (previaLogo) URL.revokeObjectURL(previaLogo)
+    }
+  }, [previaHero, previaLogo])
+
+  function escolher(
+    evento: ChangeEvent<HTMLInputElement>,
+    setArquivo: (f: File | null) => void,
+    setPrevia: (url: string | null) => void,
+    previaAtual: string | null,
   ) {
-    evento.preventDefault()
-    const dados = new FormData(evento.currentTarget)
+    const arquivo = evento.target.files?.[0] ?? null
+    if (previaAtual) URL.revokeObjectURL(previaAtual)
+    setArquivo(arquivo)
+    setPrevia(arquivo ? URL.createObjectURL(arquivo) : null)
+    setErro(null)
+    setAviso(null)
+  }
+
+  function limparHeroLocal() {
+    if (previaHero) URL.revokeObjectURL(previaHero)
+    setPreviaHero(null)
+    setArquivoHero(null)
+    if (inputHero.current) inputHero.current.value = ''
+  }
+
+  function limparLogoLocal() {
+    if (previaLogo) URL.revokeObjectURL(previaLogo)
+    setPreviaLogo(null)
+    setArquivoLogo(null)
+    if (inputLogo.current) inputLogo.current.value = ''
+  }
+
+  function salvar(
+    arquivo: File | null,
+    acao: (dados: FormData) => Promise<Resultado>,
+    sucesso: string,
+    limparLocal: () => void,
+  ) {
+    if (!arquivo) {
+      setErro('Escolha uma imagem antes de salvar.')
+      return
+    }
+    const dados = new FormData()
+    dados.set('arquivo', arquivo)
     setErro(null)
     setAviso(null)
     iniciar(async () => {
@@ -33,14 +98,11 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
       }
       setMarca(resposta.marca)
       setAviso(sucesso)
-      evento.currentTarget.reset()
+      limparLocal()
     })
   }
 
-  function remover(
-    acao: () => Promise<{ ok: true; marca: MarcaDaClinica } | { ok: false; erro: string }>,
-    sucesso: string,
-  ) {
+  function remover(acao: () => Promise<Resultado>, sucesso: string, limparLocal: () => void) {
     setErro(null)
     setAviso(null)
     iniciar(async () => {
@@ -51,8 +113,12 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
       }
       setMarca(resposta.marca)
       setAviso(sucesso)
+      limparLocal()
     })
   }
+
+  const heroVisivel = previaHero ?? marca.heroUrl
+  const logoVisivel = previaLogo ?? marca.logoUrl
 
   return (
     <div className="space-y-6">
@@ -76,42 +142,77 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-cartao border border-linha bg-superficie-2">
-          {marca.heroUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- URL local de upload
-            <img src={marca.heroUrl} alt="Foto atual do login" className="h-48 w-full object-cover" />
+        <div className="relative overflow-hidden rounded-cartao border border-linha bg-superficie-2">
+          {heroVisivel ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroVisivel}
+              alt={previaHero ? 'Prévia da foto do login' : 'Foto salva do login'}
+              className="h-48 w-full object-cover"
+            />
           ) : (
             <p className="px-4 py-16 text-center text-[13px] text-texto-suave">
               Nenhuma foto ainda — o login usa só o fundo cream.
             </p>
           )}
+          {previaHero ? (
+            <span className="absolute left-3 top-3 rounded-full bg-solido px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-solido-texto">
+              Prévia
+            </span>
+          ) : marca.heroUrl ? (
+            <span className="absolute left-3 top-3 rounded-full bg-acento-suave px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-acento">
+              Salva
+            </span>
+          ) : null}
         </div>
 
-        <form
-          className="flex flex-wrap items-center gap-3"
-          onSubmit={(evento) => enviar(evento, salvarFotoDoLogin, 'Foto do login salva.')}
-        >
+        <p className="text-[13px] text-texto-suave">
+          {arquivoHero
+            ? `Nova imagem: ${arquivoHero.name} — clique em Salvar para gravar.`
+            : marca.heroUrl
+              ? `Foto salva: ${nomeDoArquivo(marca.heroUrl)}`
+              : 'Nenhuma foto salva.'}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
           <input
+            id={idHero}
+            ref={inputHero}
             type="file"
-            name="arquivo"
             accept="image/jpeg,image/png,image/webp"
-            required
-            className="text-[13px] text-texto-suave file:mr-3 file:rounded-full file:border file:border-linha file:bg-superficie file:px-4 file:py-2 file:text-[11px] file:uppercase file:tracking-[0.1em]"
+            className="sr-only"
+            onChange={(evento) => escolher(evento, setArquivoHero, setPreviaHero, previaHero)}
           />
-          <Pilula type="submit" variante="solida" disabled={pendente}>
+          <Pilula type="button" variante="contorno" onClick={() => inputHero.current?.click()}>
+            {marca.heroUrl || arquivoHero ? 'Trocar foto' : 'Escolher foto'}
+          </Pilula>
+          <Pilula
+            type="button"
+            variante="solida"
+            disabled={pendente || !arquivoHero}
+            onClick={() =>
+              salvar(arquivoHero, salvarFotoDoLogin, 'Foto do login salva.', limparHeroLocal)
+            }
+          >
             {pendente ? 'Salvando…' : 'Salvar foto'}
           </Pilula>
-          {marca.heroUrl ? (
+          {marca.heroUrl || previaHero ? (
             <Pilula
               type="button"
               variante="contorno"
               disabled={pendente}
-              onClick={() => remover(removerFotoDoLogin, 'Foto do login removida.')}
+              onClick={() => {
+                if (arquivoHero) {
+                  limparHeroLocal()
+                  return
+                }
+                remover(removerFotoDoLogin, 'Foto do login removida.', limparHeroLocal)
+              }}
             >
-              Remover
+              {arquivoHero ? 'Cancelar prévia' : 'Remover'}
             </Pilula>
           ) : null}
-        </form>
+        </div>
       </Cartao>
 
       <Cartao className="space-y-4 p-6">
@@ -123,40 +224,73 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
           </p>
         </div>
 
-        <div className="flex h-28 items-center justify-center rounded-cartao border border-linha bg-superficie-2">
-          {marca.logoUrl ? (
+        <div className="relative flex h-28 items-center justify-center rounded-cartao border border-linha bg-superficie-2">
+          {logoVisivel ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={marca.logoUrl} alt="Logo atual" className="max-h-20 max-w-[200px] object-contain" />
+            <img
+              src={logoVisivel}
+              alt={previaLogo ? 'Prévia da logo' : 'Logo salva'}
+              className="max-h-20 max-w-[200px] object-contain"
+            />
           ) : (
             <p className="text-[13px] text-texto-suave">Nenhuma logo ainda.</p>
           )}
+          {previaLogo ? (
+            <span className="absolute left-3 top-3 rounded-full bg-solido px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-solido-texto">
+              Prévia
+            </span>
+          ) : marca.logoUrl ? (
+            <span className="absolute left-3 top-3 rounded-full bg-acento-suave px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-acento">
+              Salva
+            </span>
+          ) : null}
         </div>
 
-        <form
-          className="flex flex-wrap items-center gap-3"
-          onSubmit={(evento) => enviar(evento, salvarLogo, 'Logo salva.')}
-        >
+        <p className="text-[13px] text-texto-suave">
+          {arquivoLogo
+            ? `Nova imagem: ${arquivoLogo.name} — clique em Salvar para gravar.`
+            : marca.logoUrl
+              ? `Logo salva: ${nomeDoArquivo(marca.logoUrl)}`
+              : 'Nenhuma logo salva.'}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
           <input
+            id={idLogo}
+            ref={inputLogo}
             type="file"
-            name="arquivo"
             accept="image/jpeg,image/png,image/webp"
-            required
-            className="text-[13px] text-texto-suave file:mr-3 file:rounded-full file:border file:border-linha file:bg-superficie file:px-4 file:py-2 file:text-[11px] file:uppercase file:tracking-[0.1em]"
+            className="sr-only"
+            onChange={(evento) => escolher(evento, setArquivoLogo, setPreviaLogo, previaLogo)}
           />
-          <Pilula type="submit" variante="solida" disabled={pendente}>
+          <Pilula type="button" variante="contorno" onClick={() => inputLogo.current?.click()}>
+            {marca.logoUrl || arquivoLogo ? 'Trocar logo' : 'Escolher logo'}
+          </Pilula>
+          <Pilula
+            type="button"
+            variante="solida"
+            disabled={pendente || !arquivoLogo}
+            onClick={() => salvar(arquivoLogo, salvarLogo, 'Logo salva.', limparLogoLocal)}
+          >
             {pendente ? 'Salvando…' : 'Salvar logo'}
           </Pilula>
-          {marca.logoUrl ? (
+          {marca.logoUrl || previaLogo ? (
             <Pilula
               type="button"
               variante="contorno"
               disabled={pendente}
-              onClick={() => remover(removerLogo, 'Logo removida.')}
+              onClick={() => {
+                if (arquivoLogo) {
+                  limparLogoLocal()
+                  return
+                }
+                remover(removerLogo, 'Logo removida.', limparLogoLocal)
+              }}
             >
-              Remover
+              {arquivoLogo ? 'Cancelar prévia' : 'Remover'}
             </Pilula>
           ) : null}
-        </form>
+        </div>
       </Cartao>
     </div>
   )

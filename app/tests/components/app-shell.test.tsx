@@ -14,6 +14,7 @@ describe('itensDeNavegacao', () => {
     const rotulos = itensDeNavegacao('dra').map((item) => item.rotulo)
     expect(rotulos).toEqual([
       'Funil',
+      'Pacientes',
       'Agenda',
       'Retornos',
       'Marketing',
@@ -26,7 +27,7 @@ describe('itensDeNavegacao', () => {
 
   it('esconde da secretária o que ela não pode acessar', () => {
     const rotulos = itensDeNavegacao('secretaria').map((item) => item.rotulo)
-    expect(rotulos).toEqual(['Funil', 'Agenda', 'Retornos'])
+    expect(rotulos).toEqual(['Funil', 'Pacientes', 'Agenda', 'Retornos'])
     expect(rotulos).not.toContain('Procedimentos')
     expect(rotulos).not.toContain('Marca')
     expect(rotulos).not.toContain('Mensagens')
@@ -131,5 +132,15 @@ describe('AppShell', () => {
     expect(screen.getByText('Quinta, 6 de agosto')).toBeDefined()
     expect(screen.getByRole('button', { name: /novo lead/i })).toBeDefined()
     expect(screen.getByRole('button', { name: /alternar tema/i })).toBeDefined()
+  })
+
+  it('oferece botão para abrir o menu em telas estreitas', () => {
+    render(
+      <AppShell sessao={dra} hojeISO={HOJE}>
+        <p>conteúdo</p>
+      </AppShell>,
+    )
+    expect(screen.getByRole('button', { name: 'Abrir menu' })).toBeDefined()
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toBeDefined()
   })
 })

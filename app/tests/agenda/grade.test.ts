@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { instanteDaClinica } from '@/lib/datetime'
 import {
+  ALTURA_HORA_PX,
   FAIXAS,
   PASSO_MINUTOS,
   PRIMEIRA_HORA,
   ULTIMA_HORA,
   diasDaSemana,
+  estiloDoBlocoNaGrade,
   inicioDaSemana,
   posicionarNaGrade,
   rotuloDoPeriodo,
@@ -127,6 +129,31 @@ describe('posicionarNaGrade', () => {
     const fora = { inicio, fim: new Date(inicio.getTime() + 30 * 60_000) }
     expect(posicionarNaGrade(fora, '2026-08-10')).toBeNull()
     expect(posicionarNaGrade(fora, '2026-08-11')).toBeNull()
+  })
+})
+
+describe('estiloDoBlocoNaGrade', () => {
+  const DIA = '2026-08-10'
+  const consulta = (hhmm: string, duracao: number) => {
+    const [hora, minuto] = hhmm.split(':').map(Number)
+    const inicio = instanteDaClinica(DIA, hora * 60 + minuto)
+    return { inicio, fim: new Date(inicio.getTime() + duracao * 60_000) }
+  }
+
+  it('coloca 14:00 (6h após 08:00) a 6 × 88px do topo', () => {
+    expect(estiloDoBlocoNaGrade(consulta('14:00', 60), DIA)).toEqual({
+      topPx: 6 * ALTURA_HORA_PX,
+      heightPx: ALTURA_HORA_PX - 6,
+      transbordou: false,
+    })
+  })
+
+  it('respeita o mínimo de 56px do mockup em consultas curtas', () => {
+    expect(estiloDoBlocoNaGrade(consulta('09:00', 30), DIA)?.heightPx).toBe(56)
+  })
+
+  it('devolve null fora do dia', () => {
+    expect(estiloDoBlocoNaGrade(consulta('14:00', 60), '2026-08-11')).toBeNull()
   })
 })
 

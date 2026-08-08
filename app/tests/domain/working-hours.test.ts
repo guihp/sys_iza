@@ -21,6 +21,17 @@ const SEGUNDA = '2026-08-10'
 const SABADO = '2026-08-15'
 const DOMINGO = '2026-08-16'
 
+/** Expediente com um dia fechado — cobre a mensagem "não atende". */
+const COM_DOMINGO_FECHADO: HorarioDeAtendimento = [
+  [],
+  [{ de: '08:00', ate: '20:00' }],
+  [{ de: '08:00', ate: '20:00' }],
+  [{ de: '08:00', ate: '20:00' }],
+  [{ de: '08:00', ate: '20:00' }],
+  [{ de: '08:00', ate: '20:00' }],
+  [{ de: '08:00', ate: '13:00' }],
+]
+
 describe('minutosDeHHMM', () => {
   it('converte hora de parede em minutos do dia', () => {
     expect(minutosDeHHMM('00:00')).toBe(0)
@@ -33,18 +44,15 @@ describe('faixasDoDia', () => {
   it('devolve as faixas do dia da semana daquela data', () => {
     expect(faixasDoDia(SEGUNDA)).toEqual(HORARIO_PADRAO[1])
     expect(faixasDoDia(SABADO)).toEqual(HORARIO_PADRAO[6])
-  })
-
-  it('devolve lista vazia no dia fechado', () => {
-    expect(faixasDoDia(DOMINGO)).toEqual([])
+    expect(faixasDoDia(DOMINGO)).toEqual(HORARIO_PADRAO[0])
   })
 })
 
 describe('clinicaAbreEm', () => {
-  it('abre de segunda a sábado e fecha no domingo', () => {
+  it('abre todos os dias no horário temporário liberado', () => {
     expect(clinicaAbreEm(SEGUNDA)).toBe(true)
     expect(clinicaAbreEm(SABADO)).toBe(true)
-    expect(clinicaAbreEm(DOMINGO)).toBe(false)
+    expect(clinicaAbreEm(DOMINGO)).toBe(true)
   })
 })
 
@@ -71,14 +79,25 @@ describe('dentroDoHorarioDeAtendimento', () => {
     expect(dentroDoHorarioDeAtendimento(consulta(SEGUNDA, '19:00', 61))).toBe(false)
   })
 
-  it('recusa consulta em dia fechado', () => {
-    expect(dentroDoHorarioDeAtendimento(consulta(DOMINGO, '14:00', 60))).toBe(false)
+  it('aceita sábado à tarde e domingo (liberado até a tela de config)', () => {
+    expect(dentroDoHorarioDeAtendimento(consulta(SABADO, '14:00', 60))).toBe(true)
+    expect(dentroDoHorarioDeAtendimento(consulta(DOMINGO, '14:00', 60))).toBe(true)
   })
 
-  it('respeita o expediente mais curto do sábado', () => {
-    expect(dentroDoHorarioDeAtendimento(consulta(SABADO, '11:00', 60))).toBe(true)
-    // Sábado fecha às 13:00: começar 12:30 com uma hora de procedimento estoura.
-    expect(dentroDoHorarioDeAtendimento(consulta(SABADO, '12:30', 60))).toBe(false)
+  it('recusa consulta em dia fechado quando o horário personalizado fecha', () => {
+    expect(dentroDoHorarioDeAtendimento(consulta(DOMINGO, '14:00', 60), COM_DOMINGO_FECHADO)).toBe(
+      false,
+    )
+  })
+
+  it('respeita expediente curto personalizado no sábado', () => {
+    expect(dentroDoHorarioDeAtendimento(consulta(SABADO, '11:00', 60), COM_DOMINGO_FECHADO)).toBe(
+      true,
+    )
+    // Sábado personalizado fecha às 13:00: 12:30 + 1h estoura.
+    expect(dentroDoHorarioDeAtendimento(consulta(SABADO, '12:30', 60), COM_DOMINGO_FECHADO)).toBe(
+      false,
+    )
   })
 
   it('recusa consulta que atravessa a meia-noite', () => {
@@ -122,18 +141,17 @@ describe('validarHorarioDeAtendimento', () => {
   })
 
   it('explica em português que o dia é fechado', () => {
-    const resultado = validarHorarioDeAtendimento(consulta(DOMINGO, '14:00', 60))
+    const resultado = validarHorarioDeAtendimento(consulta(DOMINGO, '14:00', 60), COM_DOMINGO_FECHADO)
     expect(resultado.ok).toBe(false)
     expect(resultado.ok === false && resultado.motivo).toMatch(/não atende/i)
     expect(resultado.ok === false && resultado.motivo).toMatch(/domingo/i)
   })
 
   it('explica em português qual é o expediente do dia', () => {
-    const resultado = validarHorarioDeAtendimento(consulta(SABADO, '12:30', 60))
+    const resultado = validarHorarioDeAtendimento(consulta(SABADO, '19:30', 60))
     expect(resultado.ok).toBe(false)
-    // A mensagem precisa dizer o horário do sábado, e não o de segunda.
     expect(resultado.ok === false && resultado.motivo).toContain('08:00')
-    expect(resultado.ok === false && resultado.motivo).toContain('13:00')
+    expect(resultado.ok === false && resultado.motivo).toContain('20:00')
   })
 
   it('explica que a consulta não pode virar o dia', () => {

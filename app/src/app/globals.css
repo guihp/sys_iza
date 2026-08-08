@@ -10,48 +10,37 @@
  * gradiente. Os valores abaixo são os do tema claro, que é o dos mockups.
  */
 @theme {
-  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-serif: var(--font-login-serif), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-login-sans), system-ui, sans-serif;
 
-  /* Fundo da página e da sidebar. */
-  --color-fundo: #F7F4F0;
+  /* Fundo da página e da sidebar — Funil Clinica.dc.html */
+  --color-fundo: #f4f1ec;
   /* Cartão, linha de tabela, campo. */
-  --color-superficie: #FFFFFF;
-  /* Contêiner de coluna do kanban, caixa de prévia — meio passo acima do fundo. */
-  --color-superficie-2: #FCFAF7;
+  --color-superficie: #ffffff;
+  /* Contêiner de coluna do kanban, caixa de prévia. */
+  --color-superficie-2: #fbf9f6;
 
-  --color-texto: #2E2A28;
+  --color-texto: #1b1815;
   /*
-   * Rótulo, legenda, texto de apoio.
-   *
-   * O mockup pedia #8A8078, que rende 3,52:1 sobre `--color-fundo` e reprova no
-   * AA (4,5:1 para texto normal) — e este token é justamente o do rótulo miúdo
-   * de 10px, o texto mais difícil de ler da tela. Escurecido mantendo a matiz:
-   * #736A63 dá 4,89:1 sobre o fundo, 5,15:1 sobre a superfície-2 e 5,36:1 sobre
-   * o branco. A seção 6 do spec manda escurecer o token em vez de aceitar.
+   * Rótulo e apoio. Mockup usa #948b80 (ink3); escurecido para AA sobre fundo.
+   * ink2 do mockup (#5c554d) entra como texto de descrição.
    */
-  --color-texto-suave: #736A63;
+  --color-texto-suave: #5c554d;
+  --color-texto-mudo: #736a63;
 
-  /*
-   * Dourado. Substitui o rosa #C09999 do desenho antigo, que não aparecia em
-   * mockup nenhum. Rótulo de seção, número em destaque, ponto do item ativo,
-   * preenchimento da barra de meta.
-   */
-  --color-acento: #B8935F;
-  /* Bloco da agenda, chip, caixa de prévia. */
-  --color-acento-suave: #EFE3D4;
+  --color-acento: #a17c4b;
+  --color-acento-suave: #efe6d8;
 
-  /* Toda borda do sistema. Não existe borda de outra cor. */
-  --color-linha: #E8E1DA;
+  --color-linha: #e4ded4;
+  --color-linha-2: #efe9e0;
 
-  /* Botão primário: quase-preto com texto quase-branco. */
-  --color-solido: #1A1614;
-  --color-solido-texto: #FAF7F3;
+  --color-solido: #1b1815;
+  --color-solido-texto: #f4f1ec;
 
-  /* "58 dias em atraso". Mesmo dourado do acento — o desenho não usa vermelho. */
-  --color-alerta: #B8935F;
+  --color-alerta: #a17c4b;
 
-  /* Raio de cartão e de campo. Botão e chip são pílula (`rounded-full`). */
   --radius-cartao: 12px;
+  --shadow-painel: 0 1px 2px rgba(27, 24, 21, 0.04), 0 12px 32px -18px rgba(27, 24, 21, 0.18);
 }
 
 :root {
@@ -67,17 +56,20 @@
 /* Escolha explícita do usuário vence a preferência do sistema. */
 :root[data-tema="escuro"] {
   color-scheme: dark;
-  --color-fundo: #14110F;
-  --color-superficie: #1C1815;
-  --color-superficie-2: #221D1A;
-  --color-texto: #EDE7E1;
-  --color-texto-suave: #9A9088;
-  --color-acento: #C8A97E;
-  --color-acento-suave: #2F2820;
-  --color-linha: #2C2622;
-  --color-solido: #EDE7E1;
-  --color-solido-texto: #14110F;
-  --color-alerta: #C8A97E;
+  --color-fundo: #14120f;
+  --color-superficie: #201d19;
+  --color-superficie-2: #1a1815;
+  --color-texto: #f2ece4;
+  --color-texto-suave: #b3a99c;
+  --color-texto-mudo: #7d7367;
+  --color-acento: #c9a273;
+  --color-acento-suave: #2c2419;
+  --color-linha: #2c2823;
+  --color-linha-2: #26221e;
+  --color-solido: #f2ece4;
+  --color-solido-texto: #14120f;
+  --color-alerta: #c9a273;
+  --shadow-painel: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -20px rgba(0, 0, 0, 0.7);
 }
 
 /* Sem escolha explícita, segue o sistema. `:not([data-tema="claro"])` é o que
@@ -85,23 +77,52 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
     color-scheme: dark;
-    --color-fundo: #14110F;
-    --color-superficie: #1C1815;
-    --color-superficie-2: #221D1A;
-    --color-texto: #EDE7E1;
-    --color-texto-suave: #9A9088;
-    --color-acento: #C8A97E;
-    --color-acento-suave: #2F2820;
-    --color-linha: #2C2622;
-    --color-solido: #EDE7E1;
-    --color-solido-texto: #14110F;
-    --color-alerta: #C8A97E;
+    --color-fundo: #14120f;
+    --color-superficie: #201d19;
+    --color-superficie-2: #1a1815;
+    --color-texto: #f2ece4;
+    --color-texto-suave: #b3a99c;
+    --color-texto-mudo: #7d7367;
+    --color-acento: #c9a273;
+    --color-acento-suave: #2c2419;
+    --color-linha: #2c2823;
+    --color-linha-2: #26221e;
+    --color-solido: #f2ece4;
+    --color-solido-texto: #14120f;
+    --color-alerta: #c9a273;
+    --shadow-painel: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -20px rgba(0, 0, 0, 0.7);
   }
 }
 
 body {
   background: var(--color-fundo);
   color: var(--color-texto);
+}
+
+/*
+ * Barras discretas — Funil Clinica.dc.html (8px → 6px, polegar = linha).
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-linha) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-linha);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--color-texto-mudo) 55%, var(--color-linha));
 }
 
 /*

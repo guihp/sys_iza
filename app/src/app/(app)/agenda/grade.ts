@@ -23,11 +23,23 @@ export const PRIMEIRA_HORA = 8
 export const ULTIMA_HORA = 20
 /** Altura de uma linha da grade, em minutos. */
 export const PASSO_MINUTOS = 30
+/**
+ * Altura visual de uma hora — Agenda.dc.html usa 88px. O passo de 30 min
+ * ocupa metade (`ALTURA_PASSO_PX`).
+ */
+export const ALTURA_HORA_PX = 88
+export const ALTURA_PASSO_PX = ALTURA_HORA_PX / (60 / PASSO_MINUTOS)
 
 /** Minutos do dia de cada linha da grade: 480, 510, … 1170. */
 export const FAIXAS: readonly number[] = Array.from(
   { length: ((ULTIMA_HORA - PRIMEIRA_HORA) * 60) / PASSO_MINUTOS },
   (_, indice) => PRIMEIRA_HORA * 60 + indice * PASSO_MINUTOS,
+)
+
+/** Horas cheias rotuladas na coluna esquerda (8…19). */
+export const HORAS_ROTULO: readonly number[] = Array.from(
+  { length: ULTIMA_HORA - PRIMEIRA_HORA },
+  (_, indice) => PRIMEIRA_HORA + indice,
 )
 
 /** Cabeçalho de cada coluna, na ordem em que a grade desenha. */
@@ -100,6 +112,47 @@ export function posicionarNaGrade(
   return {
     linhaInicial,
     linhas: Math.max(1, linhaFinal - linhaInicial),
+    transbordou: cortadoNoInicio || cortadoNoFim,
+  }
+}
+
+export type EstiloDoBloco = {
+  /** Distância do topo da coluna, em px. */
+  topPx: number
+  /** Altura do cartão, em px (mínimo 56, como no mockup). */
+  heightPx: number
+  /** O bloco foi cortado porque começa antes ou termina depois da grade. */
+  transbordou: boolean
+}
+
+/**
+ * Posição absoluta do bloco na coluna (Agenda.dc.html): `top` e `height` em
+ * pixels a partir da meia-noite da grade (08:00). `null` se o intervalo não
+ * entra no dia / na janela desenhada.
+ */
+export function estiloDoBlocoNaGrade(
+  intervalo: { inicio: Date; fim: Date },
+  dataISO: string,
+): EstiloDoBloco | null {
+  if (dataDaClinica(intervalo.inicio) !== dataISO) return null
+
+  const inicioEmMinutos = minutosDoDiaNaClinica(intervalo.inicio)
+  const duracao = Math.round((intervalo.fim.getTime() - intervalo.inicio.getTime()) / 60_000)
+  const fimEmMinutos = inicioEmMinutos + duracao
+
+  const abertura = PRIMEIRA_HORA * 60
+  const fechamento = ULTIMA_HORA * 60
+  if (fimEmMinutos <= abertura || inicioEmMinutos >= fechamento) return null
+
+  const cortadoNoInicio = inicioEmMinutos < abertura
+  const cortadoNoFim = fimEmMinutos > fechamento
+  const inicioVisivel = Math.max(inicioEmMinutos, abertura)
+  const fimVisivel = Math.min(fimEmMinutos, fechamento)
+  const minutosVisiveis = Math.max(1, fimVisivel - inicioVisivel)
+
+  return {
+    topPx: ((inicioVisivel - abertura) / 60) * ALTURA_HORA_PX,
+    heightPx: Math.max(56, (minutosVisiveis / 60) * ALTURA_HORA_PX - 6),
     transbordou: cortadoNoInicio || cortadoNoFim,
   }
 }

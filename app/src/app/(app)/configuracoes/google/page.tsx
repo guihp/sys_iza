@@ -64,13 +64,13 @@ export default async function PaginaDoGoogle() {
         <div className="space-y-3 rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-4">
           <p className="text-sm font-medium">Sincronia ligada</p>
           <dl className="space-y-1 text-sm text-texto/70">
-            <div className="flex gap-2">
-              <dt className="text-texto/50">Agenda de destino:</dt>
-              <dd>{estado.calendarId}</dd>
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
+              <dt className="shrink-0 text-texto/50">Agenda de destino:</dt>
+              <dd className="min-w-0 break-all">{estado.calendarId}</dd>
             </div>
-            <div className="flex gap-2">
-              <dt className="text-texto/50">Conta de serviço:</dt>
-              <dd className="break-all">{estado.contaDeServico}</dd>
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
+              <dt className="shrink-0 text-texto/50">Conta de serviço:</dt>
+              <dd className="min-w-0 break-all">{estado.contaDeServico}</dd>
             </div>
           </dl>
           <p className="text-sm text-texto/60">

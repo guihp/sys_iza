@@ -58,8 +58,16 @@ export function NovoLead() {
 
   return (
     <>
-      <Pilula variante="solida" onClick={abrir}>
-        Novo lead
+      <Pilula
+        variante="solida"
+        onClick={abrir}
+        aria-label="Novo lead"
+        className="min-h-11 px-4 text-[10px] tracking-[0.08em] sm:px-5 sm:text-[11px] sm:tracking-[0.1em]"
+      >
+        <span className="sm:hidden" aria-hidden="true">
+          Lead
+        </span>
+        <span className="hidden sm:inline">Novo lead</span>
       </Pilula>
 
       <dialog

@@ -43,7 +43,7 @@ export function NavegacaoLateral({
               // que faz o leitor de tela pausar entre o rótulo e o contador.
               aria-label={contador ? `${item.rotulo}, ${contador}` : undefined}
               className={juntar(
-                'flex items-center gap-3 rounded-cartao px-3.5 py-2.5 text-[14px] transition-colors',
+                'flex min-h-11 items-center gap-3 rounded-cartao px-3.5 py-2.5 text-[14px] transition-colors',
                 ativo
                   ? 'border border-linha bg-superficie'
                   : 'border border-transparent hover:bg-superficie/60',

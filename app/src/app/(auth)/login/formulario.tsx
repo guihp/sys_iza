@@ -53,20 +53,6 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
     router.replace('/crm')
   }
 
-  async function entrarComGoogle() {
-    limparAviso()
-    setCarregando(true)
-    const supabase = createBrowserClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/crm` },
-    })
-    setCarregando(false)
-    if (error) {
-      setAviso('Login com Google ainda não está disponível nesta clínica.')
-    }
-  }
-
   async function esqueciSenha() {
     limparAviso()
     if (!email.trim()) {
@@ -89,11 +75,11 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
 
   return (
     <main
-      className="min-h-dvh overflow-hidden bg-[#f7f4ef] text-[#1b1815] antialiased"
+      className="min-h-dvh overflow-x-hidden overflow-y-auto bg-[#f7f4ef] text-[#1b1815] antialiased"
       style={{ fontFamily: 'var(--font-login-sans), system-ui, sans-serif' }}
     >
       <div className="grid min-h-dvh lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative flex min-h-0 flex-col justify-between gap-10 bg-[#efe9e0] px-8 py-10 sm:px-12 sm:py-[52px] lg:px-14">
+        <section className="relative flex min-h-0 flex-col justify-between gap-8 bg-[#efe9e0] px-6 py-8 pt-[max(2rem,env(safe-area-inset-top))] sm:gap-10 sm:px-12 sm:py-[52px] lg:px-14 lg:pt-[52px]">
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
             {marca.heroUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -128,13 +114,13 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
               <img
                 src={marca.logoUrl}
                 alt=""
-                className="mb-2 h-10 w-auto max-w-[160px] object-contain"
+                className="mb-2 h-10 w-auto max-w-[min(160px,70vw)] object-contain"
               />
             ) : (
               <div className="login-line h-px w-10 bg-[#a17c4b]" />
             )}
             <h1
-              className="text-[30px] leading-[1.1] tracking-[0.01em] text-[#1b1815]"
+              className="text-[clamp(26px,7vw,30px)] leading-[1.1] tracking-[0.01em] text-[#1b1815]"
               style={{ fontFamily: 'var(--font-login-serif), Georgia, serif' }}
             >
               Dra. Izadora Barros
@@ -144,9 +130,9 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
             </p>
           </header>
 
-          <div className="login-rise-delay relative max-w-[520px]">
+          <div className="login-rise-delay relative max-w-[520px] max-lg:pb-2">
             <p
-              className="m-0 text-[clamp(28px,3.4vw,44px)] font-light leading-[1.12] tracking-[0.005em] text-pretty text-[#1b1815]"
+              className="m-0 text-[clamp(24px,6.5vw,44px)] font-light leading-[1.12] tracking-[0.005em] text-pretty text-[#1b1815]"
               style={{ fontFamily: 'var(--font-login-serif), Georgia, serif', fontWeight: 300 }}
             >
               Cada paciente <em className="italic text-[#a17c4b]">acompanhada</em> do primeiro
@@ -156,13 +142,13 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
         </section>
 
         <section
-          className="relative flex items-center justify-center px-6 py-12 sm:px-10 sm:py-[52px]"
+          className="relative flex items-center justify-center px-5 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-10 sm:py-[52px]"
           style={{
             background: 'radial-gradient(120% 90% at 100% 0%, #ffffff 0%, #f7f4ef 62%)',
           }}
         >
           <div
-            className="absolute inset-y-0 left-0 w-px"
+            className="absolute inset-y-0 left-0 hidden w-px lg:block"
             style={{
               background:
                 'linear-gradient(180deg, rgba(161,124,75,0), rgba(161,124,75,.35), rgba(161,124,75,0))',
@@ -170,13 +156,13 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
             aria-hidden="true"
           />
           <div
-            className="login-float pointer-events-none absolute right-8 top-8 size-[120px] rounded-full border border-[rgba(161,124,75,0.18)] sm:right-14 sm:top-14"
+            className="login-float pointer-events-none absolute right-6 top-6 size-[88px] rounded-full border border-[rgba(161,124,75,0.18)] sm:right-14 sm:top-14 sm:size-[120px]"
             aria-hidden="true"
           />
 
           <form
             onSubmit={entrar}
-            className="login-rise-card relative flex w-full max-w-[392px] flex-col gap-[30px] rounded-[22px] border border-[#e8e1d7] px-8 py-11 sm:px-10"
+            className="login-rise-card relative flex w-full max-w-[392px] flex-col gap-6 rounded-[22px] border border-[#e8e1d7] px-5 py-8 sm:gap-[30px] sm:px-10 sm:py-11"
             style={{
               background: 'rgba(255,255,255,.86)',
               backdropFilter: 'blur(14px)',
@@ -188,7 +174,7 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
                 Área da clínica
               </span>
               <h2
-                className="m-0 text-[33px] font-normal leading-[1.1] text-[#1b1815]"
+                className="m-0 text-[clamp(26px,8vw,33px)] font-normal leading-[1.1] text-[#1b1815]"
                 style={{ fontFamily: 'var(--font-login-serif), Georgia, serif' }}
               >
                 Bem-vinda de volta
@@ -216,11 +202,11 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
               </label>
 
               <label className="flex flex-col gap-2">
-                <span className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-[#948b80]">
+                <span className="flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.2em] text-[#948b80]">
                   Senha
                   <button
                     type="button"
-                    className="tracking-[0.14em] text-[#a17c4b] transition-opacity hover:opacity-70"
+                    className="min-h-11 tracking-[0.14em] text-[#a17c4b] transition-opacity hover:opacity-70"
                     onClick={() => setMostrarSenha((atual) => !atual)}
                   >
                     {mostrarSenha ? 'Ocultar' : 'Mostrar'}
@@ -240,10 +226,10 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
                 />
               </label>
 
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <button
                   type="button"
-                  className="flex items-center gap-[9px] text-[12.5px] text-[#5c554d] select-none"
+                  className="flex min-h-11 items-center gap-[9px] text-[12.5px] text-[#5c554d] select-none"
                   onClick={() => setManterConectada((atual) => !atual)}
                 >
                   <span
@@ -262,7 +248,7 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
                   type="button"
                   disabled={carregando}
                   onClick={esqueciSenha}
-                  className="text-[12.5px] text-[#a17c4b] transition-colors hover:text-[#1b1815]"
+                  className="min-h-11 text-[12.5px] text-[#a17c4b] transition-colors hover:text-[#1b1815]"
                 >
                   Esqueci a senha
                 </button>
@@ -273,7 +259,7 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
               <button
                 type="submit"
                 disabled={carregando}
-                className="relative flex h-[50px] items-center justify-center overflow-hidden rounded-[12px] text-[12.5px] uppercase tracking-[0.14em] text-white transition-[transform,box-shadow] duration-[180ms] hover:-translate-y-px disabled:opacity-60"
+                className="relative flex h-[50px] min-h-11 items-center justify-center overflow-hidden rounded-[12px] text-[12.5px] uppercase tracking-[0.14em] text-white transition-[transform,box-shadow] duration-[180ms] hover:-translate-y-px disabled:opacity-60"
                 style={{
                   background: 'linear-gradient(100deg, #8f6c3e, #b08a56 48%, #8f6c3e)',
                   boxShadow: '0 18px 34px -22px rgba(143,108,62,.9)',
@@ -291,28 +277,12 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
               </button>
               <p
                 role={aviso ? (avisoOk ? 'status' : 'alert') : undefined}
-                className="min-h-[17px] text-center text-[12.5px] tracking-[0.01em]"
+                className="min-h-[17px] text-center text-[12.5px] tracking-[0.01em] text-pretty"
                 style={{ color: avisoOk ? '#8f6c3e' : '#b4553a' }}
               >
                 {aviso}
               </p>
             </div>
-
-            <div className="flex items-center gap-[14px]">
-              <span className="h-px flex-1 bg-[#e8e1d7]" aria-hidden="true" />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-[#a9a096]">ou</span>
-              <span className="h-px flex-1 bg-[#e8e1d7]" aria-hidden="true" />
-            </div>
-
-            <button
-              type="button"
-              disabled={carregando}
-              onClick={entrarComGoogle}
-              className="flex h-[46px] items-center justify-center gap-2.5 rounded-[12px] border border-[#e4ded4] bg-white text-[13px] text-[#3f3a34] transition-[border-color,background] hover:border-[#a17c4b] hover:bg-[#faf6f0] disabled:opacity-60"
-            >
-              <span className="size-1.5 rounded-full bg-[#a17c4b]" aria-hidden="true" />
-              Entrar com Google
-            </button>
 
             <p className="m-0 text-center text-[11.5px] leading-[1.6] text-[#948b80]">
               Acesso restrito à equipe. Dados de pacientes protegidos pela LGPD.

@@ -98,7 +98,7 @@ export function BuscaGlobal() {
         aria-label="Buscar paciente, telefone ou procedimento"
         aria-expanded={aberto}
         aria-controls={idDoPainel}
-        className="w-[290px] max-w-full rounded-full border border-linha bg-superficie py-2.5 pl-10 pr-4 text-[13px] placeholder:text-texto-suave [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-11 w-full max-w-[290px] rounded-full border border-linha bg-superficie py-2.5 pl-10 pr-4 text-[13px] placeholder:text-texto-suave [&::-webkit-search-cancel-button]:appearance-none"
       />
 
       {aberto && termo.trim().length >= MINIMO_DE_CARACTERES ? (

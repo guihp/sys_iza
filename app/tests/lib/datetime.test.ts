@@ -11,6 +11,7 @@ import {
   formatarDataExtensa,
   formatarDataExtensaComAno,
   formatarDiaComData,
+  formatarTempoRelativo,
   horaDaClinica,
   instanteDaClinica,
   minutosDoDiaNaClinica,
@@ -232,5 +233,22 @@ describe('diasNoMes', () => {
   it('acerta fevereiro dos dois tipos', () => {
     expect(diasNoMes('2026-02-10')).toBe(28)
     expect(diasNoMes('2028-02-10')).toBe(29)
+  })
+})
+
+describe('formatarTempoRelativo', () => {
+  const agora = new Date('2026-08-06T18:00:00.000Z') // 15h na clínica
+
+  it('fala em minutos e horas recentes', () => {
+    expect(formatarTempoRelativo(new Date('2026-08-06T17:30:00.000Z'), agora)).toBe('há 30 min')
+    expect(formatarTempoRelativo(new Date('2026-08-06T16:00:00.000Z'), agora)).toBe('há 2 h')
+  })
+
+  it('reconhece ontem no calendário da clínica', () => {
+    expect(formatarTempoRelativo(new Date('2026-08-05T20:00:00.000Z'), agora)).toBe('ontem')
+  })
+
+  it('passa a data curta depois de uma semana', () => {
+    expect(formatarTempoRelativo(new Date('2026-07-20T17:00:00.000Z'), agora)).toBe('20 jul · 14h')
   })
 })

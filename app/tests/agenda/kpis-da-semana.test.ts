@@ -10,6 +10,9 @@ import {
 /** Segunda a domingo de 10–16 de agosto de 2026. */
 const DIAS = diasDaSemana('2026-08-10')
 
+/** 7 dias × 12 h (08–20) = 5040 min. */
+const MINUTOS_UTEIS_SEMANA = 7 * 12 * 60
+
 function consulta(dia: string, hhmm: string, duracao: number, status = 'agendado') {
   const [hora, minuto] = hhmm.split(':').map(Number)
   const inicio = instanteDaClinica(dia, hora * 60 + minuto)
@@ -18,9 +21,8 @@ function consulta(dia: string, hhmm: string, duracao: number, status = 'agendado
 }
 
 describe('minutosUteisDaSemana', () => {
-  it('soma Mon–Sex 08–20 + Sáb 08–13; domingo zera', () => {
-    // 5 × 720 + 300 = 3900
-    expect(minutosUteisDaSemana(DIAS)).toBe(3900)
+  it('soma 08–20 nos sete dias (expediente temporário liberado)', () => {
+    expect(minutosUteisDaSemana(DIAS)).toBe(MINUTOS_UTEIS_SEMANA)
   })
 })
 
@@ -31,17 +33,17 @@ describe('minutosAgendadosNoExpediente', () => {
     expect(minutosAgendadosNoExpediente(inicio, fim)).toBe(60)
   })
 
-  it('corta o que passa do expediente de sábado', () => {
-    // Sábado fecha 13:00; 12:00–14:00 conta só 60 min.
-    const inicio = instanteDaClinica('2026-08-15', 12 * 60)
+  it('corta o que passa do fechamento (20:00)', () => {
+    // 19:00–21:00: só 60 min dentro do expediente.
+    const inicio = instanteDaClinica('2026-08-15', 19 * 60)
     const fim = new Date(inicio.getTime() + 120 * 60_000)
     expect(minutosAgendadosNoExpediente(inicio, fim)).toBe(60)
   })
 
-  it('zera no domingo', () => {
+  it('conta domingo como dia útil no horário liberado', () => {
     const inicio = instanteDaClinica('2026-08-16', 10 * 60)
     const fim = new Date(inicio.getTime() + 60 * 60_000)
-    expect(minutosAgendadosNoExpediente(inicio, fim)).toBe(0)
+    expect(minutosAgendadosNoExpediente(inicio, fim)).toBe(60)
   })
 })
 
@@ -64,8 +66,8 @@ describe('kpisDaSemana', () => {
     )
     expect(kpis.atendimentos).toBe(2)
     expect(kpis.hoje).toBe(1)
-    // 60 + 30 = 90 de 3900 → floor(2.3…) = 2
-    expect(kpis.ocupacaoPercentual).toBe(2)
+    // 60 + 30 = 90 de 5040 → floor(1.78…) = 1
+    expect(kpis.ocupacaoPercentual).toBe(1)
   })
 
   it('conta HOJE só pelo dia de calendário da clínica', () => {
@@ -83,8 +85,7 @@ describe('kpisDaSemana', () => {
   })
 
   it('ocupação usa floor e não passa de 100 por acidente de arredondamento', () => {
-    // Uma hora numa semana de 3900 min → floor(100/3900*100) = floor(2.56) = 2
     const kpis = kpisDaSemana([consulta('2026-08-10', '08:00', 60)], DIAS, '2026-08-10')
-    expect(kpis.ocupacaoPercentual).toBe(Math.floor((60 / 3900) * 100))
+    expect(kpis.ocupacaoPercentual).toBe(Math.floor((60 / MINUTOS_UTEIS_SEMANA) * 100))
   })
 })

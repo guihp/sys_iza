@@ -20,7 +20,8 @@ const TONS: Record<TomDoRotulo, string> = {
 
 /** Só as classes, para quem precisa aplicá-las a um `<th>` ou a um `<legend>`. */
 export function classesDeRotuloMiudo(tom: TomDoRotulo = 'suave'): string {
-  return juntar('text-[10px] uppercase tracking-[0.12em]', TONS[tom])
+  // Mockup Funil Clinica.dc.html: seção .22em, KPI .18em — meio-termo .18em.
+  return juntar('text-[10px] uppercase tracking-[0.18em]', TONS[tom])
 }
 
 export function RotuloMiudo({

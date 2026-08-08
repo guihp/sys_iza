@@ -1,9 +1,13 @@
+'use client'
+
+import { useEffect, useId, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import type { Sessao } from '@/auth/session'
 import { BuscaGlobal } from '@/components/busca/busca-global'
 import { NovoLead } from '@/components/lead/novo-lead'
 import { NavegacaoLateral } from '@/components/navegacao-lateral'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Avatar, Cartao, RotuloMiudo } from '@/components/ui'
+import { Avatar, Cartao, RotuloMiudo, juntar } from '@/components/ui'
 import { dataDaClinica, formatarDiaComData } from '@/lib/datetime'
 import {
   descreverProgresso,
@@ -36,20 +40,16 @@ export type DadosDaCasca = {
 }
 
 /**
- * Casca do sistema: duas colunas ocupando a viewport inteira.
+ * Casca do sistema: duas colunas na viewport.
  *
- * **A sidebar é fixa na tela.** Ela é `sticky top-0` com `h-dvh` própria, e o
- * miolo da navegação é a única parte dela com rolagem. O que rola é o documento
- * — nem o `<main>` nem nenhum ancestral tem `overflow`, porque um `overflow`
- * no meio do caminho criaria um novo contexto de rolagem e o `sticky` passaria
- * a grudar nele, ou seja, em nada. Era esse o bug: a lateral subia junto com o
- * conteúdo.
+ * **Desktop (`lg+`):** sidebar fixa na tela — coluna `h-dvh` sticky; o miolo da
+ * navegação rola; o conteúdo rola no `<main>`.
  *
- * Componente **síncrono e sem I/O**: todos os números chegam prontos por prop,
- * vindos de `carregarDadosDaCasca` no layout. Isso mantém a casca renderizável
- * num teste sem banco, e é o que permite `contadores` ausente significar
- * exatamente o que significa hoje — banco vazio, tudo zero, nenhum contador na
- * tela.
+ * **Telefone e tablet em retrato (`< lg`):** a sidebar vira gaveta overlay.
+ * O conteúdo usa a largura inteira; o menu abre pelo botão no cabeçalho.
+ *
+ * Componente de cliente: o estado aberto/fechado da gaveta e o fechamento ao
+ * navegar exigem hooks. Continua sem I/O — números chegam por prop do layout.
  */
 export function AppShell({
   sessao,
@@ -63,29 +63,71 @@ export function AppShell({
   const numeros: ContadoresDaCasca = { ...CONTADORES_ZERADOS, ...contadores }
   const hoje = hojeISO ?? dataDaClinica(new Date())
   const meta = progressoDaMeta(realizadoDoMesCentavos, hoje)
+  const caminho = usePathname()
+  const idDoMenu = useId()
+  const [menuAberto, setMenuAberto] = useState(false)
+
+  useEffect(() => {
+    setMenuAberto(false)
+  }, [caminho])
+
+  useEffect(() => {
+    if (!menuAberto) return
+    function fecharComEsc(evento: KeyboardEvent) {
+      if (evento.key === 'Escape') setMenuAberto(false)
+    }
+    window.addEventListener('keydown', fecharComEsc)
+    return () => window.removeEventListener('keydown', fecharComEsc)
+  }, [menuAberto])
 
   return (
-    <div className="flex min-h-dvh bg-fundo text-texto">
+    <div className="flex h-dvh bg-fundo text-texto">
+      {menuAberto ? (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-40 bg-texto/35 lg:hidden"
+          onClick={() => setMenuAberto(false)}
+        />
+      ) : null}
+
       <nav
+        id={idDoMenu}
         aria-label="Navegação principal"
-        className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-r border-linha bg-fundo px-6 py-8"
+        className={juntar(
+          'flex h-dvh w-[min(18rem,88vw)] shrink-0 flex-col border-r border-linha bg-fundo px-5 py-6 sm:px-6 sm:py-8',
+          'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out',
+          'pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]',
+          'lg:sticky lg:top-0 lg:z-auto lg:w-64 lg:translate-x-0 lg:pt-8 lg:pb-8',
+          menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        )}
       >
-        <div>
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- upload local
-            <img
-              src={logoUrl}
-              alt="Logo da clínica"
-              className="mb-4 h-9 w-auto max-w-[140px] object-contain"
-            />
-          ) : (
-            <span aria-hidden="true" className="mb-4 block h-0.5 w-10 bg-acento" />
-          )}
-          <p className="font-serif text-[22px] leading-tight">Dra. Izadora Barros</p>
-          <RotuloMiudo className="mt-2 block leading-[1.7]">
-            Estética avançada ·<br />
-            CRO SP 173735
-          </RotuloMiudo>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- upload local
+              <img
+                src={logoUrl}
+                alt="Logo da clínica"
+                className="mb-4 h-9 w-auto max-w-[140px] object-contain"
+              />
+            ) : (
+              <span aria-hidden="true" className="mb-4 block h-0.5 w-10 bg-acento" />
+            )}
+            <p className="font-serif text-[22px] leading-tight">Dra. Izadora Barros</p>
+            <RotuloMiudo className="mt-2 block leading-[1.7]">
+              Estética avançada ·<br />
+              CRO SP 173735
+            </RotuloMiudo>
+          </div>
+          <button
+            type="button"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-cartao border border-linha text-texto lg:hidden"
+            aria-label="Fechar menu"
+            onClick={() => setMenuAberto(false)}
+          >
+            <IconeFechar />
+          </button>
         </div>
 
         {/* `min-h-0` é o que deixa o `overflow-y-auto` valer dentro de um flex:
@@ -108,14 +150,28 @@ export function AppShell({
         </div>
       </nav>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-linha px-6">
-          <BuscaGlobal />
-          <div className="flex items-center gap-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-3 border-b border-linha px-4 py-3 sm:min-h-[72px] sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0">
+          <button
+            type="button"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-cartao border border-linha text-texto lg:hidden"
+            aria-expanded={menuAberto}
+            aria-controls={idDoMenu}
+            aria-label={menuAberto ? 'Fechar menu' : 'Abrir menu'}
+            onClick={() => setMenuAberto((aberto) => !aberto)}
+          >
+            {menuAberto ? <IconeFechar /> : <IconeMenu />}
+          </button>
+
+          <div className="min-w-0 flex-1 basis-[12rem]">
+            <BuscaGlobal />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             {/* `suppressHydrationWarning` não cabe aqui: a data é resolvida no
                 servidor, no fuso da clínica, e vai ao HTML já formatada — o
                 relógio do navegador de quem abre a tela não participa. */}
-            <span className="hidden text-[13px] text-texto-suave sm:inline">
+            <span className="hidden text-[13px] text-texto-suave md:inline">
               {formatarDiaComData(hoje)}
             </span>
             <ThemeToggle />
@@ -123,7 +179,19 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-6 py-8">{children}</main>
+        {/*
+          Rolagem vertical fica no `<main>` (não no documento): a barra cai no
+          rodapé da coluna de conteúdo. Páginas que precisam preencher a altura
+          (funil) usam `flex-1 min-h-0` no miolo.
+        */}
+        <main
+          className={juntar(
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6 sm:py-8',
+            menuAberto && 'max-lg:overflow-hidden',
+          )}
+        >
+          {children}
+        </main>
       </div>
     </div>
   )
@@ -153,5 +221,21 @@ function CartaoDaMeta({ meta }: { meta: ProgressoDaMeta }) {
       </div>
       <p className="mt-2 text-[11px] text-texto-suave">{descreverProgresso(meta)}</p>
     </Cartao>
+  )
+}
+
+function IconeMenu() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconeFechar() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M5 5l8 8M13 5l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
   )
 }

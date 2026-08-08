@@ -42,6 +42,7 @@ export type ItemDeNavegacao = {
 
 const NAVEGACAO: ItemDeNavegacao[] = [
   { href: '/crm', rotulo: 'Funil', contador: 'funil' },
+  { href: '/pacientes', rotulo: 'Pacientes' },
   { href: '/agenda', rotulo: 'Agenda', contador: 'agendaHoje' },
   { href: '/retornos', rotulo: 'Retornos', contador: 'retornosVencidos' },
   // Marketing fica com as telas de operação, e não com as de configuração, por

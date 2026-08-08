@@ -13,6 +13,7 @@ import {
   TabelaColuna,
   TabelaCorpo,
   TabelaLinha,
+  juntar,
 } from '@/components/ui'
 import { dataDaClinica } from '@/lib/datetime'
 import { createServerClient } from '@/lib/supabase/server'
@@ -228,7 +229,7 @@ export default async function PaginaDeMarketing({
               key={opcao}
               href={`/marketing?periodo=${opcao}`}
               variante={ativo ? 'contorno' : 'suave'}
-              className={ativo ? 'border-acento text-acento' : undefined}
+              className={juntar('min-h-11', ativo ? 'border-acento text-acento' : undefined)}
               aria-current={ativo ? 'page' : undefined}
             >
               {ativo ? (

@@ -23,10 +23,10 @@ export function Kpi({
   className?: string
 }) {
   return (
-    <div className={juntar('flex flex-col items-start gap-1', className)}>
+    <div className={juntar('flex min-w-[88px] flex-col items-start gap-1 sm:min-w-[104px]', className)}>
       <RotuloMiudo>{rotulo}</RotuloMiudo>
-      <p className="font-serif text-[32px] leading-none">{valor}</p>
-      {sublegenda ? <p className="text-[11px] text-texto-suave">{sublegenda}</p> : null}
+      <p className="font-serif text-[24px] leading-none sm:text-[30px]">{valor}</p>
+      {sublegenda ? <p className="text-[11.5px] text-texto-suave">{sublegenda}</p> : null}
     </div>
   )
 }
@@ -40,7 +40,7 @@ export function LinhaDeKpis({
   className?: string
 }) {
   return (
-    <div className={juntar('flex flex-wrap items-start gap-x-12 gap-y-6', className)}>
+    <div className={juntar('flex flex-wrap items-start gap-x-[34px] gap-y-6', className)}>
       {children}
     </div>
   )

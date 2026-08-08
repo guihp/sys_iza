@@ -258,3 +258,34 @@ export function diaDeCalendario(dataISO: string): Date {
 export function dataDoDiaDeCalendario(instante: Date): string {
   return `${instante.getUTCFullYear()}-${dois(instante.getUTCMonth() + 1)}-${dois(instante.getUTCDate())}`
 }
+
+function formatoCurtoComHora(instante: Date): string {
+  const p = paredeDaClinica(instante)
+  return `${p.dia} ${MESES_CURTOS[p.mes - 1]} · ${dois(p.hora)}h`
+}
+
+/**
+ * Tempo relativo no fuso da clínica: `há 2 h`, `ontem`, `há 3 dias`,
+ * `12 ago · 14h` quando passa de uma semana (cartão do funil).
+ */
+export function formatarTempoRelativo(instante: Date, agora: Date = new Date()): string {
+  const diffMs = agora.getTime() - instante.getTime()
+  if (diffMs < 0) return formatoCurtoComHora(instante)
+
+  const diaInstante = dataDaClinica(instante)
+  const diaAgora = dataDaClinica(agora)
+
+  if (diaInstante === diaAgora) {
+    const minutos = Math.floor(diffMs / 60_000)
+    if (minutos < 60) return minutos <= 1 ? 'há 1 min' : `há ${minutos} min`
+    const horas = Math.floor(minutos / 60)
+    return horas === 1 ? 'há 1 h' : `há ${horas} h`
+  }
+
+  if (diaInstante === deslocarData(diaAgora, -1)) return 'ontem'
+
+  const dias = Math.floor(diffMs / DIA)
+  if (dias < 7) return dias === 1 ? 'há 1 dia' : `há ${dias} dias`
+
+  return formatoCurtoComHora(instante)
+}

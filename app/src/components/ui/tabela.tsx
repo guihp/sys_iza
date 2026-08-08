@@ -12,7 +12,7 @@ import { classesDeRotuloMiudo } from './rotulo-miudo'
  * do `<thead>`.
  *
  * `<Tabela>` já vem com rolagem horizontal própria: numa tela estreita é a
- * tabela que rola, nunca a página inteira — a sidebar fica onde está.
+ * tabela que rola, nunca a página inteira.
  */
 export function Tabela({ className, ...resto }: ComponentProps<'table'>) {
   return (
@@ -49,12 +49,12 @@ export function TabelaColuna({ className, scope = 'col', ...resto }: ComponentPr
   return (
     <th
       scope={scope}
-      className={juntar(classesDeRotuloMiudo(), 'py-3 pr-4 font-normal last:pr-0', className)}
+      className={juntar(classesDeRotuloMiudo(), 'px-4 py-3 font-normal last:pr-0', className)}
       {...resto}
     />
   )
 }
 
 export function TabelaCelula({ className, ...resto }: ComponentProps<'td'>) {
-  return <td className={juntar('py-4 pr-4 align-middle last:pr-0', className)} {...resto} />
+  return <td className={juntar('px-4 py-4 align-middle last:pr-0', className)} {...resto} />
 }

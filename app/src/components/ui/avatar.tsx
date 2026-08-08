@@ -17,7 +17,7 @@ export function Avatar({ nome, className }: { nome: string; className?: string }
       aria-hidden="true"
       title={nome}
       className={juntar(
-        'inline-flex size-8 shrink-0 select-none items-center justify-center rounded-full bg-acento-suave text-[11px] text-acento',
+        'inline-flex size-8 shrink-0 select-none items-center justify-center rounded-full bg-acento-suave font-serif text-[13.5px] text-acento',
         className,
       )}
     >
