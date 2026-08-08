@@ -29,7 +29,11 @@ const schema = z.object({
   consultaId: z.uuid().nullable().optional(),
   regiaoTratada: textoOpcional,
   quantidade: textoOpcional,
+  produto: textoOpcional,
+  lote: textoOpcional,
   observacoes: textoOpcional,
+  /** Termo lido/assinado em papel; scan vai na Pasta. ICP fora de escopo. */
+  termoAssinado: z.boolean().optional(),
   /** Nível 2a. Positivo por definição — "sem retorno" é o campo próprio. */
   ajusteDias: z.coerce.number().int().positive().nullable().optional(),
   /** Nível 2b, em `YYYY-MM-DD`. Dia de calendário, sem hora e sem fuso. */
@@ -128,7 +132,10 @@ export async function registrarAtendimento(entrada: unknown): Promise<ResultadoD
       realizado_em: agora.toISOString(),
       regiao_tratada: dados.regiaoTratada ?? null,
       quantidade: dados.quantidade ?? null,
+      produto: dados.produto ?? null,
+      lote: dados.lote ?? null,
       observacoes: dados.observacoes ?? null,
+      termo_assinado: dados.termoAssinado === true,
       // Quando o nível 3 venceu, os níveis 2 não ficam gravados como se
       // tivessem valido: o formulário desabilita os dois campos, e guardar o
       // que estava neles antes só criaria um registro que se contradiz.
@@ -147,7 +154,11 @@ export async function registrarAtendimento(entrada: unknown): Promise<ResultadoD
     .single()
 
   if (error || !registro) {
-    return { ok: false, erro: 'Não foi possível registrar o atendimento. Tente de novo.' }
+    return {
+      ok: false,
+      erro:
+        'Não foi possível registrar o atendimento. Tente de novo.',
+    }
   }
 
   // A consulta que gerou o atendimento passa a 'compareceu': se a paciente foi

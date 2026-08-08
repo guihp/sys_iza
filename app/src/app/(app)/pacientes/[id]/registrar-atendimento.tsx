@@ -67,7 +67,10 @@ export function RegistrarAtendimento({
   const [consultaId, setConsultaId] = useState('')
   const [regiaoTratada, setRegiaoTratada] = useState('')
   const [quantidade, setQuantidade] = useState('')
+  const [produto, setProduto] = useState('')
+  const [lote, setLote] = useState('')
   const [observacoes, setObservacoes] = useState('')
+  const [termoAssinado, setTermoAssinado] = useState(false)
 
   // Os três controles de retorno, na ordem de precedência.
   const [dias, setDias] = useState('')
@@ -101,7 +104,10 @@ export function RegistrarAtendimento({
     setConsultaId('')
     setRegiaoTratada('')
     setQuantidade('')
+    setProduto('')
+    setLote('')
     setObservacoes('')
+    setTermoAssinado(false)
     setDias('')
     setData('')
     setSemRetorno(false)
@@ -156,7 +162,10 @@ export function RegistrarAtendimento({
               consultaId: consultaId || null,
               regiaoTratada,
               quantidade,
+              produto,
+              lote,
               observacoes,
+              termoAssinado,
               // O número já derivado, não o texto cru do campo: é exatamente o
               // que a prévia acima usou. Mandar a string faria "0" virar erro de
               // validação no servidor enquanto a tela mostrava o padrão do
@@ -247,10 +256,34 @@ export function RegistrarAtendimento({
               className={CAMPO}
             />
           </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm text-texto/80">Produto utilizado</span>
+            <input
+              name="produto"
+              value={produto}
+              onChange={(evento) => setProduto(evento.target.value)}
+              placeholder="Nome comercial / marca"
+              className={CAMPO}
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm text-texto/80">Lote</span>
+            <input
+              name="lote"
+              value={lote}
+              onChange={(evento) => setLote(evento.target.value)}
+              placeholder="Lote ou nº de série"
+              className={CAMPO}
+            />
+          </label>
         </div>
 
         <label className="block space-y-1">
-          <span className="text-sm text-texto/80">Observações da evolução</span>
+          <span className="text-sm text-texto/80">
+            Evolução / intercorrências / observações
+          </span>
           <textarea
             name="observacoes"
             rows={3}
@@ -258,6 +291,22 @@ export function RegistrarAtendimento({
             onChange={(evento) => setObservacoes(evento.target.value)}
             className={CAMPO}
           />
+        </label>
+
+        <label className="flex items-start gap-2 text-sm text-texto/80">
+          <input
+            name="termoAssinado"
+            type="checkbox"
+            checked={termoAssinado}
+            onChange={(evento) => setTermoAssinado(evento.target.checked)}
+            className="mt-0.5 size-4 accent-acento"
+          />
+          <span>
+            Termo de consentimento lido e assinado em papel.
+            <span className="block text-xs text-texto/50">
+              O scan do termo vai na aba Pasta. Assinatura ICP-Brasil fica fora desta entrega.
+            </span>
+          </span>
         </label>
 
         <fieldset className="space-y-3 rounded-lg border border-linha p-3">
