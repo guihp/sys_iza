@@ -10,24 +10,28 @@ Sistema da Clínica Izadora: dois containers a partir deste repositório — `we
 
 ---
 
-## 1. Antes de tudo: a rede interna
+## 1. Rede interna
 
-A Evolution API roda na VPS **sem porta publicada** — é assim que ela não fica
-exposta na internet. Para o app alcançá-la, os containers precisam entrar na
-mesma rede Docker onde n8n e Evolution já estão.
+O compose cria a rede `clinica-iza` automaticamente no deploy (não exige rede
+externa pré-existente). O default antigo (`n8n_default` + `external: true`)
+quebrava o Coolify se essa rede não existisse no host.
 
-Na VPS:
+A Evolution API costuma rodar **sem porta publicada**. Para o app alcançá-la,
+Evolution (e n8n, se precisar) precisa estar na **mesma** rede Docker:
+
+1. Anexe Evolution/n8n à rede `clinica-iza`, **ou**
+2. Na VPS, crie/conecte a rede compartilhada e ligue os containers nela:
 
 ```bash
 docker network ls
+docker network connect clinica-iza <container_evolution>
 ```
 
-Anote o nome da rede do n8n. O padrão assumido é `n8n_default`; se for outro,
-defina `REDE_INTERNA` no painel do Coolify com o nome correto.
+`EVOLUTION_URL` deve usar o hostname Docker interno (ex.: `http://evolution:8080`),
+não um domínio público.
 
-Se essa rede não existir ou o nome estiver errado, o deploy sobe e **os
-lembretes falham silenciosamente** com erro de conexão a cada ciclo — vale
-conferir antes.
+Não use variável de rede externa no Coolify a menos que a rede **já exista** no
+host — o compose não declara mais `external: true`.
 
 ---
 
@@ -49,7 +53,6 @@ exceto onde indicado.
 | `RESEND_API_KEY` | resend.com → API Keys | **Segredo** |
 | `EMAIL_FROM` | remetente verificado no Resend | precisa ser e-mail válido |
 | `APP_TZ` | — | opcional, default `America/Sao_Paulo` |
-| `REDE_INTERNA` | passo 1 | opcional, default `n8n_default` |
 
 ### Meta Ads — opcional, desligado por padrão
 

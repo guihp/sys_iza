@@ -91,13 +91,11 @@ services:
     networks: [interna]
 
 networks:
-  # A Evolution API fica fechada na rede interna da VPS, sem porta publicada —
-  # é assim que ela não fica exposta. Para o app alcançá-la, os dois containers
-  # entram na MESMA rede onde n8n e Evolution já rodam.
+  # Rede gerenciada pelo compose (Coolify cria no deploy). Não depende de uma
+  # rede externa pré-existente — o default antigo `n8n_default` + external
+  # quebrava o deploy se essa rede não existisse no host.
   #
-  # Confirme o nome real na VPS antes do primeiro deploy:
-  #     docker network ls
-  # e ajuste REDE_INTERNA no painel do Coolify se não for `n8n_default`.
+  # Para o app falar com Evolution/n8n na mesma VPS, coloque esses serviços
+  # nesta rede (`clinica-iza`) ou conecte os containers depois — ver DEPLOY.md.
   interna:
-    external: true
-    name: ${REDE_INTERNA:-n8n_default}
+    name: clinica-iza
