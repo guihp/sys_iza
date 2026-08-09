@@ -12,12 +12,14 @@
  *   todos os aparelhos. Sem `silent: true`, o SO decide o áudio.
  */
 
-const CACHE = 'clinica-iza-shell-v2'
+const CACHE = 'clinica-iza-shell-v3'
 const SHELL = [
   '/',
   '/manifest.webmanifest',
+  '/Favicon_Logo_App.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png',
   '/sounds/notificacao.wav',
 ]
 const SOM_NOTIFICACAO = '/sounds/notificacao.wav'
