@@ -203,16 +203,16 @@ export function AppShell({
 }
 
 /**
- * Meta do mês. O valor grande é o **realizado** (caixa recebido no mês), não
- * o alvo: é o número que muda todo dia. Com o banco vazio dá `R$ 0`, barra
- * zerada e "0% alcançado · N dias restantes" — estado correto, não erro.
+ * Meta do mês. Valor grande = **alvo** (`metaCentavos`). Abaixo da barra:
+ * realizado + "% alcançado · N dias restantes". Banco vazio: alvo configurado,
+ * `R$ 0` no rodapé, barra zerada — estado correto, não erro.
  */
 function CartaoDaMeta({ meta }: { meta: ProgressoDaMeta }) {
   return (
     <Cartao className="p-4">
       <RotuloMiudo className="block">Meta do mês</RotuloMiudo>
       <p className="mt-1 font-serif text-[28px] leading-none">
-        {formatarValorRedondo(meta.realizadoCentavos)}
+        {formatarValorRedondo(meta.metaCentavos)}
       </p>
       <div
         role="progressbar"
@@ -224,7 +224,9 @@ function CartaoDaMeta({ meta }: { meta: ProgressoDaMeta }) {
       >
         <div className="h-full rounded-full bg-acento" style={{ width: `${meta.percentualDaBarra}%` }} />
       </div>
-      <p className="mt-2 text-[11px] text-texto-suave">{descreverProgresso(meta)}</p>
+      <p className="mt-2 text-[11px] text-texto-suave">
+        {formatarValorRedondo(meta.realizadoCentavos)} · {descreverProgresso(meta)}
+      </p>
     </Cartao>
   )
 }
