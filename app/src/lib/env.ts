@@ -124,6 +124,14 @@ const serverSchema = z.object({
    * Sem ela usa um mailto local de fallback em `configuracaoVapid`.
    */
   VAPID_SUBJECT: opcional(),
+
+  // ---------------------------------------------------------------------------
+  // API HTTP de agendamento — OPCIONAL
+  // ---------------------------------------------------------------------------
+  // Sem esta chave, POST /api/agenda/agendar só aceita cookie de sessão.
+  // Com ela, também aceita Authorization: Bearer … ou x-api-key.
+  /** Segredo para agendar via API (testes / automação). Nunca no browser. */
+  AGENDA_API_KEY: opcional(),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>

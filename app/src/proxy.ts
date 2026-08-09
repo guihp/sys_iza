@@ -29,7 +29,10 @@ export async function proxy(request: NextRequest) {
   })
 
   const { data } = await supabase.auth.getUser()
-  const ehRotaPublica = request.nextUrl.pathname.startsWith('/login')
+  const caminho = request.nextUrl.pathname
+  // `/api/*` autentica sozinha (cookie de sessão OU AGENDA_API_KEY). Redirecionar
+  // para /login quebraria curl/Bearer sem cookie.
+  const ehRotaPublica = caminho.startsWith('/login') || caminho.startsWith('/api/')
 
   if (!data.user && !ehRotaPublica) {
     const url = request.nextUrl.clone()
@@ -41,5 +44,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|webp)$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|webp|wav|mp3|ogg|webmanifest)$).*)',
+  ],
 }

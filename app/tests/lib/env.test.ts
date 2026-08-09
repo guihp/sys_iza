@@ -131,3 +131,20 @@ describe('parseServerEnv — Web Push VAPID opcional', () => {
     expect(env.VAPID_SUBJECT).toBe('mailto:dono@clinicaizadora.com.br')
   })
 })
+
+describe('parseServerEnv — AGENDA_API_KEY opcional', () => {
+  it('sobe sem a chave', () => {
+    const env = parseServerEnv(completo)
+    expect(env.AGENDA_API_KEY).toBeUndefined()
+  })
+
+  it('trata vazia como ausente', () => {
+    const env = parseServerEnv({ ...completo, AGENDA_API_KEY: '' })
+    expect(env.AGENDA_API_KEY).toBeUndefined()
+  })
+
+  it('aceita quando preenchida', () => {
+    const env = parseServerEnv({ ...completo, AGENDA_API_KEY: 'chave-de-teste' })
+    expect(env.AGENDA_API_KEY).toBe('chave-de-teste')
+  })
+})

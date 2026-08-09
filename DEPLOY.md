@@ -133,6 +133,36 @@ privada. Depois do deploy: Configurações → Notificações → ligar neste ap
 Limites honestos: iOS só com PWA na Tela de Início e iOS 16.4+; Safari desktop
 é limitado; precisa HTTPS (ou `localhost` em dev).
 
+Som da notificação: o SW pede `silent: false` e um WAV em `/sounds/notificacao.wav`.
+Na prática o aparelho usa o **tom do sistema** — Chrome Android e iOS quase
+nunca tocam o arquivo customizado. Não dá para forçar um bip próprio em todas
+as plataformas.
+
+### API de agendamento (teste / automação) — opcional
+
+`POST /api/agenda/agendar` cria a consulta pelo mesmo caminho da UI (conflito,
+lembretes, push à equipe). Autenticação:
+
+1. Cookie de sessão da equipe (usuário logado), **ou**
+2. `AGENDA_API_KEY` no cabeçalho `Authorization: Bearer …` ou `x-api-key`
+
+| Variável | Onde encontrar | Observação |
+|---|---|---|
+| `AGENDA_API_KEY` | gerar localmente (`openssl rand -hex 32`) | **Segredo.** Sem ela o caminho por chave fica desligado |
+
+Exemplo (com a chave no Coolify / `.env.local`):
+
+```bash
+curl -sS -X POST "$APP_URL/api/agenda/agendar" \
+  -H "Authorization: Bearer $AGENDA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"pacienteId":"<uuid>","procedimentoId":"<uuid>","inicio":"2026-08-20T17:00:00.000Z"}'
+```
+
+`inicio` é ISO 8601 com `Z` (instante absoluto), no mesmo formato do formulário
+da agenda. Sem sessão e sem chave válida a rota responde **401** — não é
+endpoint público.
+
 ### `NEXT_PUBLIC_*` precisam ser Build Variables
 
 Não é detalhe de configuração — é a diferença entre o app funcionar e não

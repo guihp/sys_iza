@@ -47,6 +47,12 @@ export default async function PaginaDeNotificacoes() {
             há muito tempo — não é falha da clínica.
           </li>
           <li>
+            <strong className="font-medium text-texto">Som:</strong> pedimos o tom do
+            sistema (`silent: false`). iOS e Android quase nunca tocam um arquivo de som
+            customizado — o aparelho usa o bip padrão de notificação. Não dá para forçar
+            um áudio próprio em todos os aparelhos.
+          </li>
+          <li>
             Em desenvolvimento local, use <code className="text-texto">localhost</code> ou
             HTTPS; HTTP comum não registra service worker.
           </li>

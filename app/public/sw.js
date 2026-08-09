@@ -3,10 +3,24 @@
  *
  * Fica em /public para ser servido na raiz (`/sw.js`). Sem framework: o SW
  * precisa ser um arquivo estático previsível para o registro no client.
+ *
+ * Som da notificação:
+ * - `silent: false` pede o som do sistema (comportamento padrão).
+ * - `sound` aponta um WAV curto; Chrome no Android em geral ignora som
+ *   customizado e usa o tom do sistema; iOS (PWA na Tela de Início, 16.4+)
+ *   também usa o som do sistema — não há como forçar um arquivo próprio em
+ *   todos os aparelhos. Sem `silent: true`, o SO decide o áudio.
  */
 
-const CACHE = 'clinica-iza-shell-v1'
-const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
+const CACHE = 'clinica-iza-shell-v2'
+const SHELL = [
+  '/',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/sounds/notificacao.wav',
+]
+const SOM_NOTIFICACAO = '/sounds/notificacao.wav'
 
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
@@ -61,6 +75,11 @@ self.addEventListener('push', (evento) => {
       body: dados.corpo,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
+      // Pedir som do sistema; `silent: true` silenciaria em várias plataformas.
+      silent: false,
+      // Custom sound: suportado de forma irregular (ver comentário no topo).
+      sound: SOM_NOTIFICACAO,
+      vibrate: [140, 80, 140],
       data: { url: dados.url },
     }),
   )
