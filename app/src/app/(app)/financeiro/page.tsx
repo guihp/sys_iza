@@ -44,6 +44,7 @@ import {
   statusEfetivoDaParcela,
   type CobrancaParaMetricas,
   type FiltroFinanceiro,
+  type ParcelaParaMetricas,
   type PeriodoFinanceiro,
 } from './metricas'
 
@@ -76,7 +77,9 @@ type LinhaDoBanco = {
   payment_installments: ParcelaDoBanco[] | null
 }
 
-type LinhaDeTabela = LinhaNormalizada & CobrancaParaMetricas
+/** Omite `parcelas` da interseção — senão TS cruza `ParcelaDoBanco[]` com
+ *  `ReadonlyArray<ParcelaParaMetricas>` e `proximaParcelaAberta` perde `status`. */
+type LinhaDeTabela = Omit<CobrancaParaMetricas, 'parcelas'> & LinhaNormalizada
 
 type LinhaNormalizada = {
   id: string
@@ -397,9 +400,9 @@ function LinhaDeCobranca({
 }
 
 function detalheAgendaParcelas(
-  parcelas: ParcelaDoBanco[],
+  parcelas: ReadonlyArray<ParcelaParaMetricas>,
   hojeISO: string,
-  proxima: ParcelaDoBanco | null,
+  proxima: { vencimento: string } | null,
 ): string | null {
   if (parcelas.length === 0) return null
 

@@ -84,10 +84,10 @@ export function GraficoHistoricoDaMeta({
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                formatter={(valor: number | string, nome: string) => {
-                  const n = typeof valor === 'number' ? valor : Number(valor)
+                formatter={(valor, nome) => {
+                  const n = typeof valor === 'number' ? valor : Number(valor ?? 0)
                   const rotulo = nome === 'meta' ? 'Meta' : 'Realizado'
-                  return [formatarValorRedondo(Math.round(n * 100)), rotulo]
+                  return [formatarValorRedondo(Math.round(n * 100)), String(rotulo)]
                 }}
               />
               <Legend
