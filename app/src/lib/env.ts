@@ -126,11 +126,15 @@ const serverSchema = z.object({
   VAPID_SUBJECT: opcional(),
 
   // ---------------------------------------------------------------------------
-  // API HTTP de agendamento — OPCIONAL
+  // API HTTP (n8n / automação) — OPCIONAL
   // ---------------------------------------------------------------------------
-  // Sem esta chave, POST /api/agenda/agendar só aceita cookie de sessão.
-  // Com ela, também aceita Authorization: Bearer … ou x-api-key.
-  /** Segredo para agendar via API (testes / automação). Nunca no browser. */
+  // Sem chave, as rotas `/api/*` só aceitam cookie de sessão.
+  // Com ela, também aceitam Authorization: Bearer … ou x-api-key.
+  // Preferir `API_KEY`. `AGENDA_API_KEY` permanece como alias legado (Coolify
+  // já configurado continua válido).
+  /** Segredo único da API HTTP. Nunca no browser. */
+  API_KEY: opcional(),
+  /** Alias legado de `API_KEY` (mesmo valor / mesmo uso). */
   AGENDA_API_KEY: opcional(),
 })
 
@@ -145,6 +149,14 @@ export function parseServerEnv(raw: Record<string, string | undefined>): ServerE
     throw new Error(`Variáveis de ambiente inválidas — ${detalhes}`)
   }
   return resultado.data
+}
+
+/**
+ * Chave efetiva da API HTTP: `API_KEY` primeiro, senão `AGENDA_API_KEY`.
+ * Ausente/vazia → autenticação por chave desligada.
+ */
+export function chaveDaApiHttp(env: Pick<ServerEnv, 'API_KEY' | 'AGENDA_API_KEY'>): string | undefined {
+  return env.API_KEY ?? env.AGENDA_API_KEY
 }
 
 let cache: ServerEnv | null = null

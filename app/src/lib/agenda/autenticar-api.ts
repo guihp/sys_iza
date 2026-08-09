@@ -1,8 +1,9 @@
 /**
- * Autenticação da API de agendamento — puro, sem I/O.
+ * Autenticação da API HTTP (agenda, leads, listagens) — puro, sem I/O.
  *
  * Aceita `Authorization: Bearer <chave>` ou `x-api-key: <chave>`.
  * Comparação em tempo constante quando os comprimentos batem.
+ * A chave esperada vem de `API_KEY` (ou legado `AGENDA_API_KEY`).
  */
 
 import { timingSafeEqual } from 'node:crypto'
@@ -23,7 +24,7 @@ export function extrairChaveDoPedido(cabecalhos: Headers): string | null {
 }
 
 /**
- * Confere a chave fornecida com a esperada (`AGENDA_API_KEY`).
+ * Confere a chave fornecida com a esperada (`API_KEY` / `AGENDA_API_KEY`).
  *
  * Sem chave configurada no ambiente, nunca autentica por API key — evita
  * endpoint aberto quando a variável está vazia ou ausente.

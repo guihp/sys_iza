@@ -30,8 +30,8 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser()
   const caminho = request.nextUrl.pathname
-  // `/api/*` autentica sozinha (cookie de sessão OU AGENDA_API_KEY). Redirecionar
-  // para /login quebraria curl/Bearer sem cookie.
+  // `/api/*` autentica sozinha (cookie de sessão OU API_KEY / AGENDA_API_KEY).
+  // Redirecionar para /login quebraria curl/Bearer sem cookie.
   const ehRotaPublica = caminho.startsWith('/login') || caminho.startsWith('/api/')
 
   if (!data.user && !ehRotaPublica) {

@@ -4,9 +4,10 @@ import {
   abaAtiva,
   abasParaPapel,
 } from '@/app/(app)/configuracoes/abas'
+import { ENDPOINTS_DA_API, ESTAGIOS_DA_API } from '@/app/(app)/configuracoes/api/conteudo'
 
 describe('ABAS_DE_CONFIGURACOES', () => {
-  it('expõe Meta, Marca, Mensagens, Procedimentos, Notificações e Google nesta ordem', () => {
+  it('expõe Meta, Marca, Mensagens, Procedimentos, Notificações, Google e API nesta ordem', () => {
     expect(ABAS_DE_CONFIGURACOES.map((aba) => aba.rotulo)).toEqual([
       'Meta',
       'Marca',
@@ -14,6 +15,7 @@ describe('ABAS_DE_CONFIGURACOES', () => {
       'Procedimentos',
       'Notificações',
       'Google Agenda',
+      'API',
     ])
   })
 })
@@ -27,11 +29,15 @@ describe('abasParaPapel', () => {
       'Procedimentos',
       'Notificações',
       'Google Agenda',
+      'API',
     ])
   })
 
-  it('dá à secretária só Notificações', () => {
-    expect(abasParaPapel('secretaria').map((a) => a.rotulo)).toEqual(['Notificações'])
+  it('dá à secretária Notificações e API', () => {
+    expect(abasParaPapel('secretaria').map((a) => a.rotulo)).toEqual([
+      'Notificações',
+      'API',
+    ])
   })
 })
 
@@ -55,6 +61,24 @@ describe('abaAtiva', () => {
   it('respeita a lista filtrada da secretária', () => {
     const abas = abasParaPapel('secretaria')
     expect(abaAtiva('/configuracoes/notificacoes', abas)).toBe('/configuracoes/notificacoes')
+    expect(abaAtiva('/configuracoes/api', abas)).toBe('/configuracoes/api')
     expect(abaAtiva('/configuracoes/meta', abas)).toBeNull()
+  })
+})
+
+describe('documentação da API', () => {
+  it('lista os endpoints principais', () => {
+    const caminhos = ENDPOINTS_DA_API.map((e) => `${e.metodo} ${e.caminho}`)
+    expect(caminhos).toContain('GET /api/pacientes')
+    expect(caminhos).toContain('GET /api/procedimentos')
+    expect(caminhos).toContain('POST /api/leads')
+    expect(caminhos).toContain('POST /api/agenda/agendar')
+    expect(caminhos).toContain('POST /api/agenda/remarcar')
+    expect(caminhos).toContain('POST /api/agenda/cancelar')
+  })
+
+  it('documenta os sete estágios', () => {
+    expect(ESTAGIOS_DA_API).toHaveLength(7)
+    expect(ESTAGIOS_DA_API).toContain('retorno')
   })
 })

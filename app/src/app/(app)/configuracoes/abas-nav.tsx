@@ -9,7 +9,7 @@ import { abaAtiva, abasParaPapel } from './abas'
 /**
  * Abas internas de Configurações — links, sem estado próprio.
  * O caminho ativo vem do router; a regra de match mora em `abas.ts`.
- * A secretária só vê Notificações.
+ * A secretária vê Notificações e API.
  */
 export function AbasDeConfiguracoes({ role }: { role: Sessao['role'] }) {
   const caminho = usePathname()

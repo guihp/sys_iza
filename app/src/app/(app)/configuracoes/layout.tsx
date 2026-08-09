@@ -4,7 +4,7 @@ import { AbasDeConfiguracoes } from './abas-nav'
 /**
  * Casca das telas sob `/configuracoes/*`.
  *
- * Abas para dra e secretaria: a secretária só vê Notificações (push no device).
+ * Abas para dra e secretaria: a secretária vê Notificações e API.
  * Rotas exclusivas da Dra. continuam com `notFound()` na própria página.
  */
 export default async function LayoutDeConfiguracoes({

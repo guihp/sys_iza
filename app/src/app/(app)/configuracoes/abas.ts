@@ -30,6 +30,11 @@ export const ABAS_DE_CONFIGURACOES: AbaDeConfiguracoes[] = [
     papeis: ['dra', 'secretaria'],
   },
   { href: '/configuracoes/google', rotulo: 'Google Agenda', papeis: ['dra'] },
+  {
+    href: '/configuracoes/api',
+    rotulo: 'API',
+    papeis: ['dra', 'secretaria'],
+  },
 ]
 
 /** Abas visíveis para o papel logado. */

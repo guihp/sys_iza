@@ -52,7 +52,7 @@ export type ResultadoDeAgendamento = { ok: true; id: string } | { ok: false; err
  * Marca uma consulta e dispara os mesmos efeitos colaterais da UI
  * (lembretes, Google, Meta, push à equipe).
  *
- * `atorId` pode ser `null` quando a chamada veio pela API com `AGENDA_API_KEY`
+ * `atorId` pode ser `null` quando a chamada veio pela API com `API_KEY`
  * (sem sessão de usuário). O `audit_log.ator` aceita null.
  *
  * Três barreiras, nesta ordem, e nenhuma delas dispensa a outra:

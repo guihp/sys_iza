@@ -84,6 +84,45 @@ async function gravar(supabase: Cliente, jobs: JobPlanejado[]): Promise<Resultad
   return { ok: true, criados: data?.length ?? 0 }
 }
 
+/**
+ * Cancela lembretes ainda pendentes de uma consulta.
+ *
+ * Usado em remarcação e cancelamento. Além de marcar `cancelado`, reescreve
+ * `chave_idempotencia` com sufixo único: a chave original é `{consulta}:{tipo}:
+ * {canal}` sem horário, e o upsert de replanejamento usa `ignoreDuplicates` —
+ * sem liberar a chave, jobs cancelados bloqueariam os novos para sempre.
+ */
+export async function cancelarLembretesPendentesDaConsulta(
+  supabase: Cliente,
+  appointmentId: string,
+): Promise<{ ok: true; cancelados: number } | { ok: false; erro: string }> {
+  const { data, error } = await supabase
+    .from('reminder_jobs')
+    .select('id, chave_idempotencia')
+    .eq('appointment_id', appointmentId)
+    .eq('status', 'pendente')
+
+  if (error) return { ok: false, erro: error.message }
+
+  const agora = Date.now()
+  let cancelados = 0
+  for (const job of data ?? []) {
+    const { error: erroUpdate } = await supabase
+      .from('reminder_jobs')
+      .update({
+        status: 'cancelado',
+        chave_idempotencia: `${job.chave_idempotencia}:cancelado:${agora}:${job.id}`,
+      })
+      .eq('id', job.id)
+      .eq('status', 'pendente')
+
+    if (erroUpdate) return { ok: false, erro: erroUpdate.message }
+    cancelados += 1
+  }
+
+  return { ok: true, cancelados }
+}
+
 /** Lembretes de agenda: confirmação na véspera e aviso curto no dia. */
 export async function planejarLembretesDaConsulta(
   supabase: Cliente,

@@ -138,30 +138,32 @@ Na prática o aparelho usa o **tom do sistema** — Chrome Android e iOS quase
 nunca tocam o arquivo customizado. Não dá para forçar um bip próprio em todas
 as plataformas.
 
-### API de agendamento (teste / automação) — opcional
+### API HTTP (n8n / automação) — opcional
 
-`POST /api/agenda/agendar` cria a consulta pelo mesmo caminho da UI (conflito,
-lembretes, push à equipe). Autenticação:
+Rotas sob `/api/*` (pacientes, procedimentos, leads, agenda). Documentação
+completa na UI: **Configurações → API**. Autenticação:
 
 1. Cookie de sessão da equipe (usuário logado), **ou**
-2. `AGENDA_API_KEY` no cabeçalho `Authorization: Bearer …` ou `x-api-key`
+2. Chave no cabeçalho `Authorization: Bearer …` ou `x-api-key`
 
 | Variável | Onde encontrar | Observação |
 |---|---|---|
-| `AGENDA_API_KEY` | gerar localmente (`openssl rand -hex 32`) | **Segredo.** Sem ela o caminho por chave fica desligado |
+| `API_KEY` | gerar localmente (`openssl rand -hex 32`) | **Segredo.** Preferida. Sem ela (e sem o alias) o caminho por chave fica desligado |
+| `AGENDA_API_KEY` | mesmo valor / legado | Aceita se `API_KEY` estiver vazia (Coolify já configurado continua válido) |
 
-Exemplo (com a chave no Coolify / `.env.local`):
+A chave **não vem da Meta** — você gera e cola no Coolify.
+
+Exemplo:
 
 ```bash
 curl -sS -X POST "$APP_URL/api/agenda/agendar" \
-  -H "Authorization: Bearer $AGENDA_API_KEY" \
+  -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"pacienteId":"<uuid>","procedimentoId":"<uuid>","inicio":"2026-08-20T17:00:00.000Z"}'
 ```
 
-`inicio` é ISO 8601 com `Z` (instante absoluto), no mesmo formato do formulário
-da agenda. Sem sessão e sem chave válida a rota responde **401** — não é
-endpoint público.
+`inicio` é ISO 8601 com `Z` (instante absoluto). Sem sessão e sem chave válida
+→ **401**.
 
 ### `NEXT_PUBLIC_*` precisam ser Build Variables
 

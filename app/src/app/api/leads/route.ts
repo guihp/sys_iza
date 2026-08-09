@@ -1,13 +1,11 @@
 /**
- * POST /api/agenda/agendar — cria consulta e dispara o mesmo push da UI.
- *
- * Autenticação: sessão OU API_KEY / AGENDA_API_KEY (Bearer / x-api-key).
+ * POST /api/leads — cria lead (mesmo caminho do botão NOVO LEAD).
  */
 
 import { NextResponse } from 'next/server'
 import { autenticarPedidoApi } from '@/lib/api/autenticar-pedido'
 import { lerJsonDoPedido } from '@/lib/api/ler-json'
-import { executarAgendamento } from '@/lib/agenda/agendar'
+import { executarCriacaoDeLead } from '@/lib/leads/criar'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +16,7 @@ export async function POST(request: Request) {
   const corpo = await lerJsonDoPedido(request)
   if (!corpo.ok) return corpo.resposta
 
-  const resultado = await executarAgendamento(
+  const resultado = await executarCriacaoDeLead(
     auth.pedido.supabase,
     corpo.corpo,
     auth.pedido.atorId,

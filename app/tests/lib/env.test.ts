@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseServerEnv } from '@/lib/env'
+import { chaveDaApiHttp, parseServerEnv } from '@/lib/env'
 
 const completo = {
   SUPABASE_URL: 'https://x.supabase.co',
@@ -132,19 +132,44 @@ describe('parseServerEnv — Web Push VAPID opcional', () => {
   })
 })
 
-describe('parseServerEnv — AGENDA_API_KEY opcional', () => {
+describe('parseServerEnv — API_KEY / AGENDA_API_KEY opcional', () => {
   it('sobe sem a chave', () => {
     const env = parseServerEnv(completo)
+    expect(env.API_KEY).toBeUndefined()
     expect(env.AGENDA_API_KEY).toBeUndefined()
   })
 
   it('trata vazia como ausente', () => {
-    const env = parseServerEnv({ ...completo, AGENDA_API_KEY: '' })
+    const env = parseServerEnv({ ...completo, API_KEY: '', AGENDA_API_KEY: '' })
+    expect(env.API_KEY).toBeUndefined()
     expect(env.AGENDA_API_KEY).toBeUndefined()
   })
 
-  it('aceita quando preenchida', () => {
+  it('aceita API_KEY', () => {
+    const env = parseServerEnv({ ...completo, API_KEY: 'chave-nova' })
+    expect(env.API_KEY).toBe('chave-nova')
+  })
+
+  it('aceita AGENDA_API_KEY legado', () => {
     const env = parseServerEnv({ ...completo, AGENDA_API_KEY: 'chave-de-teste' })
     expect(env.AGENDA_API_KEY).toBe('chave-de-teste')
+  })
+})
+
+describe('chaveDaApiHttp', () => {
+  it('prefere API_KEY a AGENDA_API_KEY', () => {
+    expect(
+      chaveDaApiHttp({ API_KEY: 'nova', AGENDA_API_KEY: 'legado' }),
+    ).toBe('nova')
+  })
+
+  it('cai no legado quando API_KEY falta', () => {
+    expect(
+      chaveDaApiHttp({ API_KEY: undefined, AGENDA_API_KEY: 'legado' }),
+    ).toBe('legado')
+  })
+
+  it('devolve undefined sem nenhuma', () => {
+    expect(chaveDaApiHttp({ API_KEY: undefined, AGENDA_API_KEY: undefined })).toBeUndefined()
   })
 })
