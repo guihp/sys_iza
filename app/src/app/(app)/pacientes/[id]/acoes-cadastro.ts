@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireSessao } from '@/auth/session'
 import { normalizarTelefone } from '@/lib/phone'
@@ -23,6 +22,7 @@ const schema = z.object({
   email: z.string().trim().max(200).nullable(),
   endereco: z.string().trim().max(400).nullable(),
   lead_source: z.string().trim().max(120).nullable(),
+  procedimento_interesse_id: z.uuid().nullable(),
   contato_emergencia_nome: z.string().trim().max(120).nullable(),
   contato_emergencia_parentesco: z.string().trim().max(80).nullable(),
   contato_emergencia_telefone: z.string().trim().max(40).nullable(),
@@ -43,6 +43,8 @@ export async function salvarCadastro(formData: FormData): Promise<ResultadoDaAca
     return { ok: false, erro: 'E-mail inválido.' }
   }
 
+  const procedimentoBruto = textoOpcional(formData.get('procedimento_interesse_id'))
+
   const analise = schema.safeParse({
     pacienteId: formData.get('pacienteId'),
     nome_completo: formData.get('nome_completo') ?? '',
@@ -56,6 +58,7 @@ export async function salvarCadastro(formData: FormData): Promise<ResultadoDaAca
     email: emailBruto,
     endereco: textoOpcional(formData.get('endereco')),
     lead_source: textoOpcional(formData.get('lead_source')),
+    procedimento_interesse_id: procedimentoBruto,
     contato_emergencia_nome: textoOpcional(formData.get('contato_emergencia_nome')),
     contato_emergencia_parentesco: textoOpcional(formData.get('contato_emergencia_parentesco')),
     contato_emergencia_telefone: textoOpcional(formData.get('contato_emergencia_telefone')),
@@ -79,6 +82,19 @@ export async function salvarCadastro(formData: FormData): Promise<ResultadoDaAca
   }
 
   const supabase = await createServerClient()
+
+  if (dados.procedimento_interesse_id) {
+    const { data: proc } = await supabase
+      .from('procedures')
+      .select('id')
+      .eq('id', dados.procedimento_interesse_id)
+      .eq('ativo', true)
+      .maybeSingle()
+    if (!proc) {
+      return { ok: false, erro: 'Procedimento inválido ou inativo.' }
+    }
+  }
+
   const { error } = await supabase
     .from('patients')
     .update({
@@ -93,6 +109,7 @@ export async function salvarCadastro(formData: FormData): Promise<ResultadoDaAca
       email: dados.email,
       endereco: dados.endereco,
       lead_source: dados.lead_source,
+      procedimento_interesse_id: dados.procedimento_interesse_id,
       contato_emergencia_nome: dados.contato_emergencia_nome,
       contato_emergencia_parentesco: dados.contato_emergencia_parentesco,
       contato_emergencia_telefone: dados.contato_emergencia_telefone,
@@ -117,7 +134,7 @@ export async function salvarCadastro(formData: FormData): Promise<ResultadoDaAca
     registro_id: dados.pacienteId,
   })
 
-  revalidatePath(`/pacientes/${dados.pacienteId}`)
-  revalidatePath('/pacientes')
+  // Sem revalidatePath aqui: remonta a ficha no meio da digitação e perde o
+  // cursor / estado dirty. A troca de aba já recarrega o server component.
   return { ok: true }
 }

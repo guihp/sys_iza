@@ -6,6 +6,7 @@ import type { Sessao } from '@/auth/session'
 import { BuscaGlobal } from '@/components/busca/busca-global'
 import { NovoLead } from '@/components/lead/novo-lead'
 import { NavegacaoLateral } from '@/components/navegacao-lateral'
+import { BotaoInstalarApp } from '@/components/pwa/instalar-app'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Avatar, Cartao, RotuloMiudo, juntar } from '@/components/ui'
 import { dataDaClinica, formatarDiaComData } from '@/lib/datetime'
@@ -33,6 +34,8 @@ export type DadosDaCasca = {
   contadores?: Partial<ContadoresDaCasca>
   /** Realizado do mês, em centavos. Ausente = R$ 0, que é o estado de hoje. */
   realizadoDoMesCentavos?: number
+  /** Alvo do mês em centavos. Ausente = fallback `META_MENSAL_CENTAVOS`. */
+  metaDoMesCentavos?: number
   /** `YYYY-MM-DD` no calendário da clínica. Ausente = hoje. */
   hojeISO?: string
   /** Logo pública (`/marca/...`). Ausente = filete dourado. */
@@ -55,6 +58,7 @@ export function AppShell({
   sessao,
   contadores,
   realizadoDoMesCentavos = 0,
+  metaDoMesCentavos,
   hojeISO,
   logoUrl = null,
   children,
@@ -62,7 +66,7 @@ export function AppShell({
   const itens = itensDeNavegacao(sessao.role)
   const numeros: ContadoresDaCasca = { ...CONTADORES_ZERADOS, ...contadores }
   const hoje = hojeISO ?? dataDaClinica(new Date())
-  const meta = progressoDaMeta(realizadoDoMesCentavos, hoje)
+  const meta = progressoDaMeta(realizadoDoMesCentavos, hoje, metaDoMesCentavos)
   const caminho = usePathname()
   const idDoMenu = useId()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -174,6 +178,7 @@ export function AppShell({
             <span className="hidden text-[13px] text-texto-suave md:inline">
               {formatarDiaComData(hoje)}
             </span>
+            <BotaoInstalarApp />
             <ThemeToggle />
             <NovoLead />
           </div>
@@ -198,9 +203,9 @@ export function AppShell({
 }
 
 /**
- * Meta do mês. O valor grande é o **realizado**, não o alvo: é o número que
- * muda todo dia. Com o banco vazio dá `R$ 0`, barra zerada e
- * "0% alcançado · N dias restantes" — estado correto, não estado de erro.
+ * Meta do mês. O valor grande é o **realizado** (caixa recebido no mês), não
+ * o alvo: é o número que muda todo dia. Com o banco vazio dá `R$ 0`, barra
+ * zerada e "0% alcançado · N dias restantes" — estado correto, não erro.
  */
 function CartaoDaMeta({ meta }: { meta: ProgressoDaMeta }) {
   return (

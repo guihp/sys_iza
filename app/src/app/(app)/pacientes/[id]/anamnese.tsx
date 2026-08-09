@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
-import { BOTAO_PRINCIPAL, CAMPO } from '../campos'
+import { useRef, type ReactNode } from 'react'
+import { StatusAutosave } from '@/components/ui/status-autosave'
+import { useAutosaveForm } from '@/hooks/use-autosave'
+import { CAMPO } from '../campos'
 import { salvarAnamnese } from './acoes-clinico'
 import type { AnamneseLinha } from './tipos'
 
@@ -61,6 +63,7 @@ function SimNao({
 
 /**
  * Anamnese completa — págs. 1–2 do PDF. Só a Dra. grava.
+ * Autosave com debounce (~400ms) após cada alteração.
  */
 export function FormularioAnamnese({
   pacienteId,
@@ -71,10 +74,18 @@ export function FormularioAnamnese({
   anamnese: AnamneseLinha | null
   somenteLeitura: boolean
 }) {
-  const [erro, setErro] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
-  const [pendente, iniciar] = useTransition()
+  const formRef = useRef<HTMLFormElement>(null)
   const a = anamnese
+
+  const { status, erro, marcarAlterado } = useAutosaveForm({
+    enabled: !somenteLeitura,
+    save: async () => {
+      if (!formRef.current) {
+        return { ok: false, erro: 'Formulário indisponível para salvar.' }
+      }
+      return salvarAnamnese(new FormData(formRef.current))
+    },
+  })
 
   if (somenteLeitura) {
     return (
@@ -88,32 +99,21 @@ export function FormularioAnamnese({
 
   return (
     <form
+      ref={formRef}
       className="space-y-6"
-      onSubmit={(evento) => {
-        evento.preventDefault()
-        setErro(null)
-        setOk(null)
-        const dados = new FormData(evento.currentTarget)
-        iniciar(async () => {
-          const resultado = await salvarAnamnese(dados)
-          if (!resultado.ok) {
-            setErro(resultado.erro)
-            return
-          }
-          setOk('Anamnese salva.')
-        })
-      }}
+      onSubmit={(evento) => evento.preventDefault()}
+      onChange={marcarAlterado}
     >
       <input type="hidden" name="pacienteId" value={pacienteId} />
 
-      {erro ? (
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-texto/50">Alterações são salvas automaticamente.</p>
+        <StatusAutosave status={status} erro={erro} />
+      </div>
+
+      {erro && status === 'error' ? (
         <p role="alert" className="rounded-lg border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">
           {erro}
-        </p>
-      ) : null}
-      {ok ? (
-        <p role="status" className="rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
-          {ok}
         </p>
       ) : null}
 
@@ -129,13 +129,13 @@ export function FormularioAnamnese({
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1">
-            <span className="text-sm text-texto/80">Impacto na autoconfiança (0–10)</span>
+            <span className="text-sm text-texto/80">
+              Impacto na autoconfiança{' '}
+              <span className="text-texto/50">(ex.: 0–10 ou notas)</span>
+            </span>
             <input
               name="autoconfianca_rosto"
-              type="number"
-              min={0}
-              max={10}
-              step={1}
+              type="text"
               defaultValue={a?.autoconfianca_rosto ?? ''}
               className={CAMPO}
             />
@@ -407,10 +407,6 @@ export function FormularioAnamnese({
           </label>
         </div>
       </Grupo>
-
-      <button type="submit" disabled={pendente} className={BOTAO_PRINCIPAL}>
-        {pendente ? 'Salvando…' : 'Salvar anamnese'}
-      </button>
     </form>
   )
 }

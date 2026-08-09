@@ -111,6 +111,19 @@ const serverSchema = z.object({
    * — trocar variável no painel é mais rápido do que um deploy.
    */
   META_AD_ACCOUNT_ID: opcional(),
+
+  // ---------------------------------------------------------------------------
+  // Web Push (PWA) — avisos de agendamento à equipe, OPCIONAL
+  // ---------------------------------------------------------------------------
+  // A chave pública vai em NEXT_PUBLIC_VAPID_PUBLIC_KEY (inlinada no client).
+  // Sem privada + pública o push fica desligado; o resto do sistema sobe.
+  /** Chave privada VAPID. Segredo; nunca vai para a tela. */
+  VAPID_PRIVATE_KEY: opcional(),
+  /**
+   * Contato exigido pelo protocolo (`mailto:` ou `https://`).
+   * Sem ela usa um mailto local de fallback em `configuracaoVapid`.
+   */
+  VAPID_SUBJECT: opcional(),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>

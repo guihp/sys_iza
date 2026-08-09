@@ -10,24 +10,29 @@ const secretaria: Sessao = { userId: 'u2', nome: 'Ana Lima', role: 'secretaria' 
 const HOJE = '2026-08-06'
 
 describe('itensDeNavegacao', () => {
-  it('dá à dra o menu inteiro, incluindo configurações', () => {
+  it('dá à dra o menu inteiro, com Configurações unificada', () => {
     const rotulos = itensDeNavegacao('dra').map((item) => item.rotulo)
     expect(rotulos).toEqual([
       'Funil',
       'Pacientes',
       'Agenda',
       'Retornos',
+      'Financeiro',
       'Marketing',
-      'Procedimentos',
-      'Marca',
-      'Mensagens',
-      'Google Agenda',
+      'Configurações',
     ])
   })
 
   it('esconde da secretária o que ela não pode acessar', () => {
     const rotulos = itensDeNavegacao('secretaria').map((item) => item.rotulo)
-    expect(rotulos).toEqual(['Funil', 'Pacientes', 'Agenda', 'Retornos'])
+    expect(rotulos).toEqual([
+      'Funil',
+      'Pacientes',
+      'Agenda',
+      'Retornos',
+      'Financeiro',
+      'Configurações',
+    ])
     expect(rotulos).not.toContain('Procedimentos')
     expect(rotulos).not.toContain('Marca')
     expect(rotulos).not.toContain('Mensagens')
@@ -48,10 +53,10 @@ describe('AppShell', () => {
     expect(screen.getByText('conteúdo')).toBeDefined()
     expect(screen.getByText('Izadora Barros')).toBeDefined()
     expect(screen.getByText('Doutora')).toBeDefined()
-    expect(screen.getByRole('link', { name: 'Procedimentos' })).toBeDefined()
+    expect(screen.getByRole('link', { name: 'Configurações' })).toBeDefined()
   })
 
-  it('não mostra à secretária os links de configuração', () => {
+  it('mostra Configurações à secretária (só Notificações por dentro)', () => {
     render(
       <AppShell sessao={secretaria} hojeISO={HOJE}>
         <p>conteúdo</p>
@@ -61,8 +66,8 @@ describe('AppShell', () => {
     // Com acento: é o papel por extenso, em português, não o valor do enum.
     expect(screen.getByText('Secretária')).toBeDefined()
     expect(screen.getByRole('link', { name: 'Agenda' })).toBeDefined()
-    expect(screen.queryByRole('link', { name: 'Procedimentos' })).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Mensagens' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Configurações' })).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Marketing' })).toBeNull()
   })
 
   it('omite os contadores quando o banco está vazio', () => {
@@ -91,7 +96,7 @@ describe('AppShell', () => {
     // justamente o que quem usa leitor de tela precisa ouvir.
     expect(screen.getByRole('link', { name: 'Funil, 12' })).toBeDefined()
     expect(screen.getByRole('link', { name: 'Agenda, 3 hoje' })).toBeDefined()
-    expect(screen.getByRole('link', { name: 'Mensagens, 7' })).toBeDefined()
+    expect(screen.getByRole('link', { name: 'Configurações, 7' })).toBeDefined()
     // Zero continua fora, mesmo com os vizinhos preenchidos.
     expect(screen.getByRole('link', { name: 'Retornos' }).textContent).toBe('Retornos')
   })
@@ -117,6 +122,22 @@ describe('AppShell', () => {
       </AppShell>,
     )
     expect(screen.getByText('R$ 22.500')).toBeDefined()
+    expect(screen.getByRole('progressbar', { name: /meta do mês/i }).getAttribute('aria-valuenow')).toBe(
+      '50',
+    )
+  })
+
+  it('usa a meta configurada no cálculo da barra', () => {
+    render(
+      <AppShell
+        sessao={dra}
+        hojeISO={HOJE}
+        realizadoDoMesCentavos={1_000_000}
+        metaDoMesCentavos={2_000_000}
+      >
+        <p>conteúdo</p>
+      </AppShell>,
+    )
     expect(screen.getByRole('progressbar', { name: /meta do mês/i }).getAttribute('aria-valuenow')).toBe(
       '50',
     )

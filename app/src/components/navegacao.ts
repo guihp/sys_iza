@@ -45,6 +45,11 @@ const NAVEGACAO: ItemDeNavegacao[] = [
   { href: '/pacientes', rotulo: 'Pacientes' },
   { href: '/agenda', rotulo: 'Agenda', contador: 'agendaHoje' },
   { href: '/retornos', rotulo: 'Retornos', contador: 'retornosVencidos' },
+  // Cobranças dos atendimentos: a secretária também lê (RLS SELECT equipe) —
+  // precisa ver o que falta entrar ao falar com a paciente. Sem baixa manual
+  // na UI (cartão liquida no vencimento). Sem contador: o número útil é valor
+  // em aberto, e valor não cabe no formato de contagem do menu.
+  { href: '/financeiro', rotulo: 'Financeiro' },
   // Marketing fica com as telas de operação, e não com as de configuração, por
   // causa do que ela é: relatório que se lê toda semana, não ajuste que se faz
   // uma vez. Exclusiva da dra — a tela mostra quanto a clínica gasta, quanto
@@ -52,19 +57,14 @@ const NAVEGACAO: ItemDeNavegacao[] = [
   // Sem contador: o número que importaria ali é o gasto, e gasto não cabe no
   // formato de contagem do menu.
   { href: '/marketing', rotulo: 'Marketing', papeis: ['dra'] },
-  // Configurações são de escrita exclusiva da dra (ver `exigirDra`): não
-  // adianta oferecer à secretária um link para uma tela que ela não opera.
-  { href: '/configuracoes/procedimentos', rotulo: 'Procedimentos', papeis: ['dra'] },
-  { href: '/configuracoes/marca', rotulo: 'Marca', papeis: ['dra'] },
+  // Meta/Marca/Mensagens/Procedimentos/Google: Dra. Notificações: equipe
+  // inteira (push no device). Contador de mensagens só é útil para a Dra.;
+  // a secretária entra pela mesma porta e cai em Notificações.
   {
-    href: '/configuracoes/mensagens',
-    rotulo: 'Mensagens',
-    papeis: ['dra'],
+    href: '/configuracoes',
+    rotulo: 'Configurações',
     contador: 'mensagensAtivas',
   },
-  // Sincronia opcional com o Google Agenda: é a agenda pessoal da Dra. que está
-  // do outro lado, e a tela mostra com qual conta o sistema fala com o Google.
-  { href: '/configuracoes/google', rotulo: 'Google Agenda', papeis: ['dra'] },
 ]
 
 /** Função pura: o menu é derivado do papel, não escondido com CSS. */
@@ -99,8 +99,8 @@ export function formatarContador(
  * O item está ativo para este caminho?
  *
  * Prefixo com barra, e não `startsWith` cru: `/crm` não pode acender por causa
- * de uma futura `/crmx`, e `/configuracoes/procedimentos` precisa continuar
- * aceso em `/configuracoes/procedimentos/123`.
+ * de uma futura `/crmx`, e `/configuracoes` precisa continuar aceso em
+ * `/configuracoes/meta`, `/configuracoes/marca`, etc.
  */
 export function itemAtivo(item: ItemDeNavegacao, caminho: string | null): boolean {
   if (!caminho) return false

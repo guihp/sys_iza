@@ -1,14 +1,32 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useId, useRef, useState, useTransition } from 'react'
 import { ROTULOS_ANGULO, type AnguloFoto } from '@/domain/clinical/prontuario'
 import { formatarDataExtensaComAno } from '@/lib/datetime'
-import { BOTAO_PRINCIPAL, BOTAO_SECUNDARIO, CAMPO } from '../campos'
+import {
+  destinoDoArquivo,
+  tituloDeNomeArquivo,
+} from '@/lib/pasta-paciente'
+import { BOTAO_SECUNDARIO } from '../campos'
 import { removerArquivo, subirArquivo, subirFoto } from './acoes-pasta'
 import type { ArquivoLinha, FotoLinha } from './tipos'
 
+type StatusEnvio = 'enviando' | 'ok' | 'erro'
+
+type ItemFila = {
+  id: string
+  nome: string
+  destino: 'foto' | 'arquivo'
+  status: StatusEnvio
+  erro?: string
+}
+
+const ANGULO_PADRAO: AnguloFoto = 'frontal'
+const CATEGORIA_PADRAO = 'outro'
+
 /**
  * Pasta — fotos clínicas e arquivos (termo escaneado, exames).
+ * Uma zona de drop: imagens → fotos; demais aceitos → arquivos.
  * URLs assinadas de curta duração; nunca públicas.
  */
 export function PastaDoPaciente({
@@ -22,26 +40,161 @@ export function PastaDoPaciente({
   arquivos: ArquivoLinha[]
   somenteLeitura: boolean
 }) {
-  const [erro, setErro] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
-  const [pendente, iniciar] = useTransition()
-  const [angulo, setAngulo] = useState<AnguloFoto>('frontal')
-  const [titulo, setTitulo] = useState('Termo assinado')
-  const [categoria, setCategoria] = useState('termo')
-  const inputFoto = useRef<HTMLInputElement>(null)
-  const inputArquivo = useRef<HTMLInputElement>(null)
+  const inputId = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [fila, setFila] = useState<ItemFila[]>([])
+  const [arrastando, setArrastando] = useState(false)
+  const [erroGeral, setErroGeral] = useState<string | null>(null)
+  const [pendenteRemocao, iniciarRemocao] = useTransition()
+
+  function atualizarItem(id: string, patch: Partial<ItemFila>) {
+    setFila((atual) => atual.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  }
+
+  async function enviarArquivo(arquivo: File) {
+    const destino = destinoDoArquivo(arquivo.type)
+    const id = `${arquivo.name}-${arquivo.size}-${arquivo.lastModified}-${Math.random().toString(36).slice(2, 8)}`
+
+    if (!destino) {
+      setFila((atual) => [
+        ...atual,
+        {
+          id,
+          nome: arquivo.name,
+          destino: 'arquivo',
+          status: 'erro',
+          erro: 'Use JPEG, PNG, WebP ou PDF.',
+        },
+      ])
+      return
+    }
+
+    setFila((atual) => [
+      ...atual,
+      { id, nome: arquivo.name, destino, status: 'enviando' },
+    ])
+
+    const dados = new FormData()
+    dados.set('pacienteId', pacienteId)
+    dados.set('arquivo', arquivo)
+
+    if (destino === 'foto') {
+      dados.set('angulo', ANGULO_PADRAO)
+      const resultado = await subirFoto(dados)
+      if (!resultado.ok) {
+        atualizarItem(id, { status: 'erro', erro: resultado.erro })
+        return
+      }
+    } else {
+      dados.set('titulo', tituloDeNomeArquivo(arquivo.name))
+      dados.set('categoria', CATEGORIA_PADRAO)
+      const resultado = await subirArquivo(dados)
+      if (!resultado.ok) {
+        atualizarItem(id, { status: 'erro', erro: resultado.erro })
+        return
+      }
+    }
+
+    atualizarItem(id, { status: 'ok' })
+  }
+
+  function processarLista(lista: FileList | File[]) {
+    const arquivosSelecionados = Array.from(lista)
+    if (arquivosSelecionados.length === 0) return
+    setErroGeral(null)
+    void Promise.all(arquivosSelecionados.map((arquivo) => enviarArquivo(arquivo)))
+  }
 
   return (
     <div className="space-y-8">
-      {erro ? (
+      {erroGeral ? (
         <p role="alert" className="rounded-lg border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">
-          {erro}
+          {erroGeral}
         </p>
       ) : null}
-      {ok ? (
-        <p role="status" className="rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
-          {ok}
-        </p>
+
+      {!somenteLeitura ? (
+        <div className="space-y-3">
+          <label
+            htmlFor={inputId}
+            onDragEnter={(e) => {
+              e.preventDefault()
+              setArrastando(true)
+            }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setArrastando(true)
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault()
+              if (e.currentTarget.contains(e.relatedTarget as Node)) return
+              setArrastando(false)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              setArrastando(false)
+              processarLista(e.dataTransfer.files)
+            }}
+            className={[
+              'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center transition',
+              arrastando
+                ? 'border-acento bg-acento/5'
+                : 'border-linha bg-superficie/40 hover:border-acento/60',
+            ].join(' ')}
+          >
+            <span className="font-serif text-lg text-texto">Solte ou escolha arquivos</span>
+            <span className="max-w-sm text-sm text-texto/60">
+              Imagens (JPEG, PNG, WebP) vão para fotos clínicas. PDF e demais aceitos, para
+              arquivos. Upload inicia na hora.
+            </span>
+            <input
+              id={inputId}
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="sr-only"
+              onChange={(e) => {
+                if (e.target.files) processarLista(e.target.files)
+                e.target.value = ''
+              }}
+            />
+          </label>
+
+          {fila.length > 0 ? (
+            <ul className="space-y-1.5 text-sm" aria-live="polite">
+              {fila.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-baseline justify-between gap-2 border-b border-linha/50 py-1.5 last:border-0"
+                >
+                  <span className="truncate text-texto">
+                    {item.nome}
+                    <span className="text-texto/50">
+                      {' '}
+                      · {item.destino === 'foto' ? 'foto' : 'arquivo'}
+                    </span>
+                  </span>
+                  <span
+                    className={
+                      item.status === 'erro'
+                        ? 'text-red-700'
+                        : item.status === 'ok'
+                          ? 'text-emerald-700'
+                          : 'text-texto/60'
+                    }
+                  >
+                    {item.status === 'enviando'
+                      ? 'Enviando…'
+                      : item.status === 'ok'
+                        ? 'Enviado'
+                        : item.erro ?? 'Erro'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
 
       <section className="space-y-4">
@@ -51,63 +204,6 @@ export function PastaDoPaciente({
             Bucket privado · link assinado por 15 minutos
           </p>
         </header>
-
-        {!somenteLeitura ? (
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-linha p-4">
-            <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Ângulo</span>
-              <select
-                value={angulo}
-                onChange={(e) => setAngulo(e.target.value as AnguloFoto)}
-                className={CAMPO}
-              >
-                {(Object.keys(ROTULOS_ANGULO) as AnguloFoto[]).map((a) => (
-                  <option key={a} value={a}>
-                    {ROTULOS_ANGULO[a]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Arquivo</span>
-              <input
-                ref={inputFoto}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="block text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={pendente}
-              className={BOTAO_PRINCIPAL}
-              onClick={() => {
-                const arquivo = inputFoto.current?.files?.[0]
-                if (!arquivo) {
-                  setErro('Escolha uma foto.')
-                  return
-                }
-                setErro(null)
-                setOk(null)
-                const dados = new FormData()
-                dados.set('pacienteId', pacienteId)
-                dados.set('angulo', angulo)
-                dados.set('arquivo', arquivo)
-                iniciar(async () => {
-                  const resultado = await subirFoto(dados)
-                  if (!resultado.ok) {
-                    setErro(resultado.erro)
-                    return
-                  }
-                  setOk('Foto enviada.')
-                  if (inputFoto.current) inputFoto.current.value = ''
-                })
-              }}
-            >
-              {pendente ? 'Enviando…' : 'Enviar foto'}
-            </button>
-          </div>
-        ) : null}
 
         {fotos.length === 0 ? (
           <p className="text-sm text-texto/60">Nenhuma foto ainda.</p>
@@ -140,16 +236,16 @@ export function PastaDoPaciente({
                     <button
                       type="button"
                       className="text-xs text-red-700 hover:underline"
-                      disabled={pendente}
+                      disabled={pendenteRemocao}
                       onClick={() => {
-                        iniciar(async () => {
+                        setErroGeral(null)
+                        iniciarRemocao(async () => {
                           const resultado = await removerArquivo({
                             pacienteId,
                             id: foto.id,
                             tipo: 'foto',
                           })
-                          if (!resultado.ok) setErro(resultado.erro)
-                          else setOk('Foto removida.')
+                          if (!resultado.ok) setErroGeral(resultado.erro)
                         })
                       }}
                     >
@@ -167,73 +263,9 @@ export function PastaDoPaciente({
         <header>
           <h2 className="font-serif text-lg">Arquivos</h2>
           <p className="text-sm text-texto/60">
-            Termo assinado em papel, exames, PDF/JPG
+            Termo assinado em papel, exames, PDF
           </p>
         </header>
-
-        {!somenteLeitura ? (
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-linha p-4">
-            <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Título</span>
-              <input
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                className={CAMPO}
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Categoria</span>
-              <select
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
-                className={CAMPO}
-              >
-                <option value="termo">Termo</option>
-                <option value="exame">Exame</option>
-                <option value="outro">Outro</option>
-              </select>
-            </label>
-            <label className="block space-y-1">
-              <span className="text-sm text-texto/80">Arquivo</span>
-              <input
-                ref={inputArquivo}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                className="block text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={pendente}
-              className={BOTAO_PRINCIPAL}
-              onClick={() => {
-                const arquivo = inputArquivo.current?.files?.[0]
-                if (!arquivo) {
-                  setErro('Escolha um arquivo.')
-                  return
-                }
-                setErro(null)
-                setOk(null)
-                const dados = new FormData()
-                dados.set('pacienteId', pacienteId)
-                dados.set('titulo', titulo)
-                dados.set('categoria', categoria)
-                dados.set('arquivo', arquivo)
-                iniciar(async () => {
-                  const resultado = await subirArquivo(dados)
-                  if (!resultado.ok) {
-                    setErro(resultado.erro)
-                    return
-                  }
-                  setOk('Arquivo enviado.')
-                  if (inputArquivo.current) inputArquivo.current.value = ''
-                })
-              }}
-            >
-              {pendente ? 'Enviando…' : 'Enviar arquivo'}
-            </button>
-          </div>
-        ) : null}
 
         {arquivos.length === 0 ? (
           <p className="text-sm text-texto/60">Nenhum arquivo ainda.</p>
@@ -267,16 +299,16 @@ export function PastaDoPaciente({
                     <button
                       type="button"
                       className="text-xs text-red-700 hover:underline"
-                      disabled={pendente}
+                      disabled={pendenteRemocao}
                       onClick={() => {
-                        iniciar(async () => {
+                        setErroGeral(null)
+                        iniciarRemocao(async () => {
                           const resultado = await removerArquivo({
                             pacienteId,
                             id: arquivo.id,
                             tipo: 'arquivo',
                           })
-                          if (!resultado.ok) setErro(resultado.erro)
-                          else setOk('Arquivo removido.')
+                          if (!resultado.ok) setErroGeral(resultado.erro)
                         })
                       }}
                     >

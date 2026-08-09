@@ -2,17 +2,9 @@
  * Validação e helpers puros do prontuário clínico.
  *
  * Sem I/O, sem Supabase, sem React, sem Next — o que permite cobrir as bordas
- * (autoconfiança 0–10, idade a partir do nascimento, totais do plano de toxina)
- * com teste unitário sem banco.
+ * (idade a partir do nascimento, totais do plano de toxina) com teste unitário
+ * sem banco.
  */
-
-/** Escala do PDF: impacto na autoconfiança, 0 a 10 inclusive. */
-export function validarAutoconfianca(valor: unknown): number | null {
-  if (valor === null || valor === undefined || valor === '') return null
-  const n = typeof valor === 'number' ? valor : Number(String(valor).trim())
-  if (!Number.isInteger(n) || n < 0 || n > 10) return null
-  return n
-}
 
 /**
  * Idade em anos completos no dia de calendário da clínica.

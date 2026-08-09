@@ -7,6 +7,32 @@ import { montarKpisDoFunil } from './metricas'
 
 export const metadata = { title: 'Funil' }
 
+type LinhaDoFunil = {
+  id: string
+  nome_completo: string
+  telefone: string | null
+  lead_source: string | null
+  stage: PacienteDoFunil['stage']
+  criado_em: string | null
+  procedimento_interesse_id: string | null
+  procedures: { nome: string; preco_centavos: number } | { nome: string; preco_centavos: number }[] | null
+}
+
+function mapearPaciente(linha: LinhaDoFunil): PacienteDoFunil {
+  const proc = linha.procedures
+  const procedimento = proc ? (Array.isArray(proc) ? proc[0] : proc) : null
+  return {
+    id: linha.id,
+    nome_completo: linha.nome_completo,
+    telefone: linha.telefone,
+    lead_source: linha.lead_source,
+    stage: linha.stage,
+    criado_em: linha.criado_em,
+    procedimento_interesse: procedimento?.nome ?? null,
+    potencial_centavos: procedimento?.preco_centavos ?? null,
+  }
+}
+
 /**
  * Funil de pacientes em kanban. Server Component: a consulta roda no servidor,
  * com o client autenticado por cookie, então a RLS de `patients` é quem decide
@@ -15,8 +41,8 @@ export const metadata = { title: 'Funil' }
  * Sem filtro de estágio na query: são sete colunas na mesma tela, e uma leitura
  * só é mais barata que sete. O agrupamento acontece no kanban, por função pura.
  *
- * Procedimento de interesse ainda não existe no schema — cartões mostram
- * "A definir" / potencial "—" até haver coluna.
+ * Procedimento de interesse vem do catálogo (`procedimento_interesse_id` →
+ * `procedures`): nome e preço alimentam o cartão e o potencial da coluna.
  */
 export default async function PaginaDoFunil() {
   await requireSessao()
@@ -28,7 +54,11 @@ export default async function PaginaDoFunil() {
   const [pacientesRes, ticketRes] = await Promise.all([
     supabase
       .from('patients')
-      .select('id, nome_completo, telefone, lead_source, stage, criado_em')
+      .select(
+        `id, nome_completo, telefone, lead_source, stage, criado_em,
+         procedimento_interesse_id,
+         procedures:procedimento_interesse_id ( nome, preco_centavos )`,
+      )
       .order('criado_em', { ascending: false }),
     supabase
       .from('attendance_records')
@@ -36,7 +66,7 @@ export default async function PaginaDoFunil() {
       .gte('realizado_em', inicio30.toISOString()),
   ])
 
-  const pacientes = (pacientesRes.data ?? []) as PacienteDoFunil[]
+  const pacientes = ((pacientesRes.data ?? []) as unknown as LinhaDoFunil[]).map(mapearPaciente)
   // PostgREST tipa a FK como array em alguns joins; em runtime é objeto ou null.
   const precos = (ticketRes.data ?? []) as unknown as {
     procedures: { preco_centavos: number } | { preco_centavos: number }[] | null
@@ -60,7 +90,7 @@ export default async function PaginaDoFunil() {
       : `+${kpis.novosNaSemana} esta semana`
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-6">
+    <section className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-6">
       <CabecalhoDePagina
         className="shrink-0"
         secao="Pipeline clínico"

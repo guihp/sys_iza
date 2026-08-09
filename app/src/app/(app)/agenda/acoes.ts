@@ -9,6 +9,7 @@ import { enfileirarConversoes } from '@/lib/conversoes'
 import { dataDaClinica, deslocarData, horaDaClinica, instanteDaClinica } from '@/lib/datetime'
 import { sincronizarConsultaNoGoogle } from '@/lib/google-agenda'
 import { planejarLembretesDaConsulta } from '@/lib/lembretes'
+import { avisarEquipeDeNovoAgendamento } from '@/lib/push/enviar'
 import { createServerClient } from '@/lib/supabase/server'
 
 const CAMINHO_AGENDA = '/agenda'
@@ -80,6 +81,8 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
     .select('id, nome, duracao_minutos')
     .eq('id', dados.procedimentoId)
     .single()
+
+  // `nome` já vem aqui: o push de agendamento reusa sem segunda consulta.
 
   if (erroProcedimento || !procedimento) {
     return { ok: false, erro: 'Procedimento não encontrado no catálogo.' }
@@ -159,7 +162,7 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
   // funil subiu — e `Schedule` é justamente o evento por que a Meta otimiza.
   const { data: pacienteAntes } = await supabase
     .from('patients')
-    .select('stage')
+    .select('stage, nome_completo')
     .eq('id', dados.pacienteId)
     .single()
 
@@ -208,6 +211,14 @@ export async function agendarConsulta(entrada: unknown): Promise<ResultadoDeAgen
     patientId: dados.pacienteId,
     estagioAnterior: (pacienteAntes as { stage: string } | null)?.stage ?? null,
     estagioNovo: 'agendado',
+  })
+
+  // Push à equipe (devices com subscription ativa). Best-effort: sem VAPID ou
+  // sem inscrição, sai calado. Não desfaz o agendamento.
+  await avisarEquipeDeNovoAgendamento({
+    nomePaciente: pacienteAntes?.nome_completo ?? 'Paciente',
+    nomeProcedimento: procedimento.nome,
+    inicio,
   })
 
   revalidatePath(CAMINHO_AGENDA)

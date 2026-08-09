@@ -108,12 +108,39 @@ Passo a passo do lado do Google (também está na tela `/configuracoes/google`):
    recusa a escrita, mesmo com as credenciais certas.
 4. Preencher as três variáveis no Coolify e redeployar.
 
-### As duas `NEXT_PUBLIC_*` precisam ser Build Variables
+### Web Push (PWA) — opcional, desligado por padrão
+
+Avisos à **equipe** (dra + secretaria) quando alguém marca uma consulta. Pacientes
+não recebem este canal. Sem as chaves VAPID o sistema sobe normal; só o push
+fica desligado.
+
+| Variável | Onde encontrar | Observação |
+|---|---|---|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | par gerado localmente | Marque **Build Variable** (Turbopack inlina) |
+| `VAPID_PRIVATE_KEY` | par gerado localmente | **Segredo.** Nunca no repositório |
+| `VAPID_SUBJECT` | `mailto:` do dono ou URL do app | opcional; há fallback local |
+
+Gerar o par (uma vez) na máquina de desenvolvimento:
+
+```bash
+cd app && pnpm exec web-push generate-vapid-keys
+```
+
+Cole a pública em `NEXT_PUBLIC_VAPID_PUBLIC_KEY` e a privada em
+`VAPID_PRIVATE_KEY` no Coolify (e no `.env.local` em dev). **Não commit** a
+privada. Depois do deploy: Configurações → Notificações → ligar neste aparelho.
+
+Limites honestos: iOS só com PWA na Tela de Início e iOS 16.4+; Safari desktop
+é limitado; precisa HTTPS (ou `localhost` em dev).
+
+### `NEXT_PUBLIC_*` precisam ser Build Variables
 
 Não é detalhe de configuração — é a diferença entre o app funcionar e não
-funcionar. O Turbopack **inlina** essas duas no bundle durante o `next build`.
-Se elas só existirem em runtime, a imagem sai com `undefined` compilado dentro e
-o client do Supabase quebra no browser, com o login falhando sem mensagem útil.
+funcionar. O Turbopack **inlina** `NEXT_PUBLIC_*` no bundle durante o `next build`.
+Se `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` só existirem em
+runtime, a imagem sai com `undefined` compilado dentro e o client do Supabase
+quebra no browser, com o login falhando sem mensagem útil. O mesmo vale para
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY` se você ligar o push: marque como Build Variable.
 
 O `Dockerfile.web` recusa o build se elas não chegarem como `ARG`, justamente
 para o erro aparecer no build e não em produção.

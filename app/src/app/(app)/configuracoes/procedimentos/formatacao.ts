@@ -25,11 +25,30 @@ export function formatarDuracao(minutos: number): string {
   return `${minutos} min`
 }
 
-/** Centavos → valor editável no campo de texto, sem símbolo de moeda. */
+const INTEIRO_PT = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
+
+/** Centavos → valor editável no campo de texto, sem símbolo de moeda (`12.400,00`). */
 export function precoParaCampo(centavos: number): string {
   const reais = Math.floor(centavos / 100)
   const resto = String(centavos % 100).padStart(2, '0')
-  return `${reais},${resto}`
+  return `${INTEIRO_PT.format(reais)},${resto}`
+}
+
+/**
+ * Máximo de dígitos tratados como centavos no campo ao vivo. Além disso
+ * `Number` perde precisão; 15 casas cobrem até ~R$ 9 trilhões.
+ */
+const MAX_DIGITOS_MOEDA = 15
+
+/**
+ * Máscara ao digitar (UX pt-BR de moeda): só os dígitos contam, da direita
+ * para a esquerda como centavos. Digitar `1000000` → `10.000,00`.
+ * Campo vazio se não houver dígito; colar `R$ 1.800,00` extrai os dígitos.
+ */
+export function mascararMoedaAoDigitar(texto: string): string {
+  const digitos = texto.replace(/\D/g, '').slice(0, MAX_DIGITOS_MOEDA)
+  if (digitos === '') return ''
+  return precoParaCampo(Number(digitos))
 }
 
 /**

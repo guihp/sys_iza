@@ -11,6 +11,7 @@ import {
   removerArquivoDoPaciente,
   subirArquivoDoPaciente,
   TAMANHO_MAXIMO_ARQUIVO_BYTES,
+  tituloDeNomeArquivo,
 } from '@/lib/pasta-paciente'
 import { createServerClient } from '@/lib/supabase/server'
 import { textoOpcional } from '../campos'
@@ -33,7 +34,8 @@ export async function subirFoto(formData: FormData): Promise<ResultadoDaAcao> {
   if (!pacienteId.success) return { ok: false, erro: 'Paciente inválido.' }
 
   const anguloBruto = formData.get('angulo')
-  if (!ehAnguloFoto(anguloBruto)) return { ok: false, erro: 'Ângulo inválido.' }
+  // Upload unificado: ângulo opcional — default `frontal` (enum + default do banco).
+  const angulo = ehAnguloFoto(anguloBruto) ? anguloBruto : 'frontal'
 
   const arquivo = formData.get('arquivo')
   if (!(arquivo instanceof File) || arquivo.size === 0) {
@@ -75,7 +77,7 @@ export async function subirFoto(formData: FormData): Promise<ResultadoDaAcao> {
   const { error } = await supabase.from('photos').insert({
     session_id: sessaoFoto.id,
     patient_id: pacienteId.data,
-    angulo: anguloBruto,
+    angulo,
     storage_path: upload.path,
     mime_type: arquivo.type,
     tamanho_bytes: arquivo.size,
@@ -98,10 +100,6 @@ export async function subirArquivo(formData: FormData): Promise<ResultadoDaAcao>
   const pacienteId = z.uuid().safeParse(formData.get('pacienteId'))
   if (!pacienteId.success) return { ok: false, erro: 'Paciente inválido.' }
 
-  const titulo = textoOpcional(formData.get('titulo'))
-  if (!titulo) return { ok: false, erro: 'Informe um título.' }
-
-  const categoria = textoOpcional(formData.get('categoria')) ?? 'outro'
   const arquivo = formData.get('arquivo')
   if (!(arquivo instanceof File) || arquivo.size === 0) {
     return { ok: false, erro: 'Escolha um arquivo (imagem ou PDF).' }
@@ -111,6 +109,13 @@ export async function subirArquivo(formData: FormData): Promise<ResultadoDaAcao>
   if (arquivo.size > TAMANHO_MAXIMO_ARQUIVO_BYTES) {
     return { ok: false, erro: 'Arquivo acima de 15 MB.' }
   }
+
+  // Upload unificado: título = nome do arquivo; categoria default `outro`.
+  const titulo =
+    textoOpcional(formData.get('titulo')) ?? tituloDeNomeArquivo(arquivo.name)
+  if (!titulo) return { ok: false, erro: 'Informe um título.' }
+
+  const categoria = textoOpcional(formData.get('categoria')) ?? 'outro'
 
   const supabase = await createServerClient()
   const nome = `${randomUUID()}.${ext}`

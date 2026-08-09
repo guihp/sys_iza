@@ -18,6 +18,7 @@ import {
   descreverRetorno,
   formatarDuracao,
   formatarPreco,
+  mascararMoedaAoDigitar,
   precoParaCampo,
   reaisParaCentavos,
 } from './formatacao'
@@ -203,13 +204,16 @@ function Formulario({
 }) {
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciarTransicao] = useTransition()
+  const [preco, setPreco] = useState(
+    procedimento ? precoParaCampo(procedimento.preco_centavos) : '',
+  )
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     // Ler o FormData antes da transição: o formulário some assim que fecha.
     const campos = new FormData(evento.currentTarget)
 
-    const precoCentavos = reaisParaCentavos(String(campos.get('preco') ?? ''))
+    const precoCentavos = reaisParaCentavos(preco)
     if (precoCentavos === null) {
       setErro('Informe um preço válido, por exemplo 1.800,00. Use 0 para cortesia.')
       return
@@ -270,7 +274,8 @@ function Formulario({
             name="preco"
             inputMode="decimal"
             required
-            defaultValue={procedimento ? precoParaCampo(procedimento.preco_centavos) : ''}
+            value={preco}
+            onChange={(evento) => setPreco(mascararMoedaAoDigitar(evento.target.value))}
             placeholder="1.800,00"
             className={CAMPO}
           />

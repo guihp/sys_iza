@@ -29,7 +29,7 @@ function item(href: string): ItemDeNavegacao {
 
 const funil = item('/crm')
 const agenda = item('/agenda')
-const google = item('/configuracoes/google')
+const configuracoes = item('/configuracoes')
 
 describe('formatarContador', () => {
   it('devolve o número para o item que conta alguma coisa', () => {
@@ -46,10 +46,13 @@ describe('formatarContador', () => {
   })
 
   it('não inventa contador para item que não tem', () => {
-    expect(formatarContador(google, cheios)).toBeNull()
-    // Marketing também não conta nada: o número que importaria ali é o gasto, e
-    // gasto não cabe no formato de contagem do menu.
+    // Marketing e Financeiro não contam nada no formato de contagem do menu.
     expect(formatarContador(item('/marketing'), cheios)).toBeNull()
+    expect(formatarContador(item('/financeiro'), cheios)).toBeNull()
+  })
+
+  it('mostra mensagens ativas no item Configurações', () => {
+    expect(formatarContador(configuracoes, cheios)).toBe('7')
   })
 
   it('trata número inválido como ausência, em vez de escrever NaN na tela', () => {
@@ -59,17 +62,13 @@ describe('formatarContador', () => {
 })
 
 describe('itemAtivo', () => {
-  const procedimentos: ItemDeNavegacao = {
-    href: '/configuracoes/procedimentos',
-    rotulo: 'Procedimentos',
-  }
-
   it('acende no caminho exato', () => {
     expect(itemAtivo(funil, '/crm')).toBe(true)
   })
 
-  it('acende numa subrota', () => {
-    expect(itemAtivo(procedimentos, '/configuracoes/procedimentos/abc')).toBe(true)
+  it('acende numa subrota de Configurações', () => {
+    expect(itemAtivo(configuracoes, '/configuracoes/meta')).toBe(true)
+    expect(itemAtivo(configuracoes, '/configuracoes/procedimentos/abc')).toBe(true)
   })
 
   it('não acende por prefixo de texto solto', () => {

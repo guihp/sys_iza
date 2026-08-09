@@ -15,7 +15,7 @@ export type PacienteDoFunil = {
   lead_source: string | null
   stage: PatientStage
   criado_em?: string | null
-  /** Centavos do procedimento de interesse — ainda sem coluna no banco. */
+  /** Centavos do procedimento de interesse (catálogo). */
   potencial_centavos?: number | null
   procedimento_interesse?: string | null
 }
@@ -36,8 +36,13 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
   )
   const [, iniciarTransicao] = useTransition()
   const [erro, setErro] = useState<string | null>(null)
-  /** Coluna sob o cursor durante o arrasto, só para o destaque visual. */
+  /** Coluna sob o cursor durante o arrasto (só desktop), só para o destaque. */
   const [alvo, setAlvo] = useState<PatientStage | null>(null)
+  /**
+   * Abaixo de `lg` o board de 7 colunas vira abas: uma coluna por vez no
+   * telefone; no tablet a mesma UX (mais legível que 2×282px apertados).
+   */
+  const [aba, setAba] = useState<PatientStage>('lead')
 
   const colunas = agruparPorEstagio(otimistas)
 
@@ -47,10 +52,15 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
 
     setErro(null)
     iniciarTransicao(async () => {
+      const origem = paciente.stage
       aplicarMovimento({ id, estagio })
+      // No mobile, ao mudar estágio pelo select o cartão some da aba atual —
+      // acompanhar a paciente na coluna nova evita a sensação de "sumiu".
+      setAba(estagio)
       try {
         await moverEstagio(id, estagio)
       } catch {
+        setAba(origem)
         // A mensagem do servidor pode carregar detalhe de banco; não vai à tela.
         setErro(
           `Não foi possível mover ${paciente.nome_completo}. O cartão voltou para a coluna anterior.`,
@@ -67,66 +77,147 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
       {erro && (
         <p role="alert" className="shrink-0 text-sm text-red-600">
           {erro}
         </p>
       )}
 
+      {/* Telefone / tablet: pills de estágio — uma coluna por vez. */}
+      <div className="shrink-0 lg:hidden">
+        <div
+          role="tablist"
+          aria-label="Estágios do funil"
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+        >
+          {ESTAGIOS.map((estagio) => {
+            const ativa = aba === estagio
+            const qtd = colunas[estagio].length
+            return (
+              <button
+                key={estagio}
+                type="button"
+                role="tab"
+                aria-selected={ativa}
+                onClick={() => setAba(estagio)}
+                className={`flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 text-[12.5px] tracking-[0.02em] transition-colors ${
+                  ativa
+                    ? 'border-acento bg-acento/10 text-texto'
+                    : 'border-linha-2 bg-superficie-2 text-texto-suave'
+                }`}
+              >
+                <span className="whitespace-nowrap">{ROTULOS[estagio]}</span>
+                <span
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] ${
+                    ativa ? 'bg-acento/20 text-texto' : 'bg-linha-2 text-texto-mudo'
+                  }`}
+                >
+                  {qtd}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Mobile: coluna única da aba ativa. */}
+      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+        <Coluna
+          estagio={aba}
+          lista={colunas[aba]}
+          alvo={null}
+          aoMover={mover}
+          aoSoltar={soltar}
+          aoArrastarSobre={() => {}}
+          aoSairArrasto={() => {}}
+          larga
+        />
+      </div>
+
       {/*
+        Desktop `lg+`: board horizontal de 7 colunas.
         `flex-1 min-h-0` preenche até o rodapé do `<main>`: a barra horizontal
         fica embaixo da tela, não grudada sob as colunas vazias.
       */}
-      <div className="flex min-h-0 flex-1 items-stretch gap-4 overflow-x-auto pb-1">
-        {ESTAGIOS.map((estagio) => {
-          const lista = colunas[estagio]
-          return (
-            <section
-              key={estagio}
-              aria-label={ROTULOS[estagio]}
-              onDragOver={(evento) => {
-                // Sem preventDefault no dragover o navegador não aceita o drop.
-                evento.preventDefault()
-                setAlvo(estagio)
-              }}
-              onDragLeave={() => setAlvo((atual) => (atual === estagio ? null : atual))}
-              onDrop={(evento) => soltar(evento, estagio)}
-              className={`flex h-full min-h-0 w-[282px] shrink-0 flex-col gap-3 rounded-2xl border bg-superficie p-4 shadow-[var(--shadow-painel)] transition-[border-color,box-shadow] ${
-                alvo === estagio ? 'border-acento' : 'border-linha'
-              }`}
-            >
-              <header className="flex shrink-0 flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2.5">
-                  <h2 className="flex items-center gap-2.5 font-serif text-[18px] tracking-[0.01em]">
-                    <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-acento" />
-                    {ROTULOS[estagio]}
-                  </h2>
-                  <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-linha-2 px-1.5 text-[11.5px] text-texto-suave">
-                    {lista.length}
-                  </span>
-                </div>
-                <p className="text-[11px] tracking-[0.04em] text-texto-mudo">
-                  {textoPotencialDaColuna(lista.map((p) => p.potencial_centavos))}
-                </p>
-              </header>
-
-              <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
-                {lista.length === 0 && (
-                  <li className="flex items-center justify-center rounded-[13px] border border-dashed border-linha px-3 py-6 text-center text-[12.5px] text-texto-mudo">
-                    Nenhum paciente neste estágio
-                  </li>
-                )}
-
-                {lista.map((paciente) => (
-                  <Cartao key={paciente.id} paciente={paciente} aoMover={mover} />
-                ))}
-              </ul>
-            </section>
-          )
-        })}
+      <div className="hidden min-h-0 flex-1 items-stretch gap-4 overflow-x-auto pb-1 lg:flex">
+        {ESTAGIOS.map((estagio) => (
+          <Coluna
+            key={estagio}
+            estagio={estagio}
+            lista={colunas[estagio]}
+            alvo={alvo}
+            aoMover={mover}
+            aoSoltar={soltar}
+            aoArrastarSobre={() => setAlvo(estagio)}
+            aoSairArrasto={() => setAlvo((atual) => (atual === estagio ? null : atual))}
+          />
+        ))}
       </div>
     </div>
+  )
+}
+
+function Coluna({
+  estagio,
+  lista,
+  alvo,
+  aoMover,
+  aoSoltar,
+  aoArrastarSobre,
+  aoSairArrasto,
+  larga = false,
+}: {
+  estagio: PatientStage
+  lista: PacienteDoFunil[]
+  alvo: PatientStage | null
+  aoMover: (id: string, estagio: PatientStage) => void
+  aoSoltar: (evento: DragEvent<HTMLElement>, estagio: PatientStage) => void
+  aoArrastarSobre: () => void
+  aoSairArrasto: () => void
+  larga?: boolean
+}) {
+  return (
+    <section
+      aria-label={ROTULOS[estagio]}
+      onDragOver={(evento) => {
+        // Sem preventDefault no dragover o navegador não aceita o drop.
+        evento.preventDefault()
+        aoArrastarSobre()
+      }}
+      onDragLeave={aoSairArrasto}
+      onDrop={(evento) => aoSoltar(evento, estagio)}
+      className={`flex min-h-0 flex-col gap-3 rounded-2xl border bg-superficie p-3 shadow-[var(--shadow-painel)] transition-[border-color,box-shadow] sm:p-4 ${
+        larga ? 'h-full w-full' : 'h-full w-[282px] shrink-0'
+      } ${alvo === estagio ? 'border-acento' : 'border-linha'}`}
+    >
+      <header className="flex shrink-0 flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-2.5">
+          <h2 className="flex items-center gap-2.5 font-serif text-[17px] tracking-[0.01em] sm:text-[18px]">
+            <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-acento" />
+            {ROTULOS[estagio]}
+          </h2>
+          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-linha-2 px-1.5 text-[11.5px] text-texto-suave">
+            {lista.length}
+          </span>
+        </div>
+        <p className="text-[11px] tracking-[0.04em] text-texto-mudo">
+          {textoPotencialDaColuna(lista.map((p) => p.potencial_centavos))}
+        </p>
+      </header>
+
+      <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
+        {lista.length === 0 && (
+          <li className="flex items-center justify-center rounded-[13px] border border-dashed border-linha px-3 py-6 text-center text-[12.5px] text-texto-mudo">
+            Nenhum paciente neste estágio
+          </li>
+        )}
+
+        {lista.map((paciente) => (
+          <Cartao key={paciente.id} paciente={paciente} aoMover={aoMover} />
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -154,7 +245,7 @@ function Cartao({
       onDragEnd={(evento) => {
         evento.currentTarget.style.opacity = '1'
       }}
-      className="group flex cursor-grab flex-col gap-2.5 rounded-[13px] border border-linha-2 bg-superficie-2 p-3.5 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-linha hover:shadow-[0_14px_28px_-18px_rgba(27,24,21,0.4)] active:cursor-grabbing"
+      className="group flex cursor-grab flex-col gap-2.5 rounded-[13px] border border-linha-2 bg-superficie-2 p-3.5 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-linha hover:shadow-[0_14px_28px_-18px_rgba(27,24,21,0.4)] active:cursor-grabbing sm:p-3.5"
     >
       {/*
         `draggable={false}` no link: âncora é arrastável por padrão no navegador,
@@ -198,7 +289,7 @@ function Cartao({
             const escolhido = evento.target.value
             if (ehEstagio(escolhido)) aoMover(paciente.id, escolhido)
           }}
-          className="w-full rounded-md border border-linha-2 bg-transparent px-2 py-1 text-[11px] text-texto-mudo"
+          className="min-h-11 w-full rounded-md border border-linha-2 bg-transparent px-2.5 py-2 text-[12.5px] text-texto-suave sm:min-h-0 sm:py-1 sm:text-[11px] sm:text-texto-mudo"
         >
           {ESTAGIOS.map((estagio) => (
             <option key={estagio} value={estagio}>

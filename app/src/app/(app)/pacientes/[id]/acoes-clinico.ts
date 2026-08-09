@@ -1,10 +1,8 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { exigirDra, ErroDePermissao } from '@/auth/guard'
 import { getSessao } from '@/auth/session'
-import { validarAutoconfianca } from '@/domain/clinical/prontuario'
 import { createServerClient } from '@/lib/supabase/server'
 import { booleanoDoForm, textoOpcional } from '../campos'
 import type { ResultadoDaAcao } from './tipos'
@@ -49,10 +47,6 @@ function inteiroOpcional(valor: FormDataEntryValue | null): number | null {
   return Number.isInteger(n) ? n : null
 }
 
-function revalidarFicha(pacienteId: string) {
-  revalidatePath(`/pacientes/${pacienteId}`)
-}
-
 /**
  * Upsert da anamnese (págs. 1–2). Uma linha por paciente.
  */
@@ -63,19 +57,10 @@ export async function salvarAnamnese(formData: FormData): Promise<ResultadoDaAca
   const pacienteId = z.uuid().safeParse(formData.get('pacienteId'))
   if (!pacienteId.success) return { ok: false, erro: 'Paciente inválido.' }
 
-  const autoconfiancaBruta = textoOpcional(formData.get('autoconfianca_rosto'))
-  let autoconfianca: number | null = null
-  if (autoconfiancaBruta != null) {
-    autoconfianca = validarAutoconfianca(autoconfiancaBruta)
-    if (autoconfianca == null) {
-      return { ok: false, erro: 'Autoconfiança deve ser um número inteiro de 0 a 10.' }
-    }
-  }
-
   const linha = {
     patient_id: pacienteId.data,
     queixa_principal: textoOpcional(formData.get('queixa_principal')),
-    autoconfianca_rosto: autoconfianca,
+    autoconfianca_rosto: textoOpcional(formData.get('autoconfianca_rosto')),
     incomodo_rosto: textoOpcional(formData.get('incomodo_rosto')),
     rosto_cansado: simNao(formData.get('rosto_cansado')),
     prev_botox: booleanoDoForm(formData.get('prev_botox')),
@@ -153,7 +138,7 @@ export async function salvarAnamnese(formData: FormData): Promise<ResultadoDaAca
     registro_id: pacienteId.data,
   })
 
-  revalidarFicha(pacienteId.data)
+  // Sem revalidatePath — evita remount mid-edit; troca de aba recarrega.
   return { ok: true }
 }
 
@@ -226,6 +211,6 @@ export async function salvarAvaliacao(formData: FormData): Promise<ResultadoDaAc
     registro_id: pacienteId.data,
   })
 
-  revalidarFicha(pacienteId.data)
+  // Sem revalidatePath — evita remount mid-edit; troca de aba recarrega.
   return { ok: true }
 }

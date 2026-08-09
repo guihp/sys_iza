@@ -1,5 +1,8 @@
 import type { Sessao } from '@/auth/session'
 import { montarFila, type AtendimentoDoPaciente } from '@/app/(app)/retornos/fila'
+import { carregarCobrancasParaMetricas } from '@/app/(app)/financeiro/cobrancas'
+import { recebidoDoMesCentavos } from '@/app/(app)/financeiro/metricas'
+import { carregarMetaMensalCentavos } from '@/lib/clinic-settings'
 import { dataDaClinica, deslocarData, instanteDaClinica } from '@/lib/datetime'
 import { createServerClient } from '@/lib/supabase/server'
 import { CONTADORES_ZERADOS, type ContadoresDaCasca } from './navegacao'
@@ -15,6 +18,9 @@ import { CONTADORES_ZERADOS, type ContadoresDaCasca } from './navegacao'
  * fica zerado e some da lateral. Um número errado no menu é ruído; a casca
  * inteira caindo por causa de um contador seria a tela toda perdida por um
  * enfeite.
+ *
+ * Realizado = caixa recebido no mês, não faturamento de catálogo (mesma regra
+ * do KPI "Recebido" em `/financeiro`).
  */
 
 /**
@@ -27,6 +33,8 @@ const TETO_DE_LINHAS = 5000
 export type DadosCarregadosDaCasca = {
   contadores: ContadoresDaCasca
   realizadoDoMesCentavos: number
+  /** Alvo do mês corrente (`clinic_meta_mensal`, com fallback em `clinic_settings`). */
+  metaDoMesCentavos: number
   hojeISO: string
 }
 
@@ -40,16 +48,7 @@ export async function carregarDadosDaCasca(sessao: Sessao): Promise<DadosCarrega
   const inicioDeHoje = instanteDaClinica(hojeISO, 0)
   const fimDeHoje = instanteDaClinica(deslocarData(hojeISO, 1), 0)
 
-  const primeiroDoMes = `${hojeISO.slice(0, 7)}-01`
-  const inicioDoMes = instanteDaClinica(primeiroDoMes, 0)
-  // Dia 1 do mês seguinte, sem aritmética de calendário na mão.
-  const proximoMes =
-    Number(hojeISO.slice(5, 7)) === 12
-      ? `${Number(hojeISO.slice(0, 4)) + 1}-01-01`
-      : `${hojeISO.slice(0, 4)}-${String(Number(hojeISO.slice(5, 7)) + 1).padStart(2, '0')}-01`
-  const fimDoMes = instanteDaClinica(proximoMes, 0)
-
-  const [funil, agenda, prontuario, mes, templates] = await Promise.all([
+  const [funil, agenda, prontuario, cobrancas, templates, metaDoMesCentavos] = await Promise.all([
     supabase
       .from('patients')
       .select('id', { count: 'exact', head: true })
@@ -71,14 +70,10 @@ export async function carregarDadosDaCasca(sessao: Sessao): Promise<DadosCarrega
       .order('realizado_em', { ascending: false })
       .limit(TETO_DE_LINHAS),
 
-    supabase
-      .from('attendance_records')
-      .select('procedures(preco_centavos)')
-      .gte('realizado_em', inicioDoMes.toISOString())
-      .lt('realizado_em', fimDoMes.toISOString()),
+    carregarCobrancasParaMetricas(),
 
-    // A secretária não vê o item Mensagens no menu; não há por que buscar o
-    // número dele. A RLS deixaria ela ler, mas o contador não iria a lugar
+    // A secretária não vê Configurações no menu; o contador de mensagens ativas
+    // só aparece ali. A RLS deixaria ela ler, mas o número não iria a lugar
     // nenhum.
     sessao.role === 'dra'
       ? supabase
@@ -86,6 +81,8 @@ export async function carregarDadosDaCasca(sessao: Sessao): Promise<DadosCarrega
           .select('kind', { count: 'exact', head: true })
           .eq('ativo', true)
       : Promise.resolve({ count: 0, error: null }),
+
+    carregarMetaMensalCentavos(),
   ])
 
   return {
@@ -97,7 +94,9 @@ export async function carregarDadosDaCasca(sessao: Sessao): Promise<DadosCarrega
       retornosVencidos: contarVencidos(prontuario.data, hojeISO),
       mensagensAtivas: templates.count ?? 0,
     },
-    realizadoDoMesCentavos: somarRealizado(mes.data),
+    // Realizado = caixa recebido no mês, não faturamento de catálogo.
+    realizadoDoMesCentavos: recebidoDoMesCentavos(cobrancas, hojeISO),
+    metaDoMesCentavos,
   }
 }
 
@@ -131,17 +130,4 @@ function contarVencidos(data: unknown, hojeISO: string): number {
   }))
 
   return montarFila(registros, hojeISO).filter((linha) => linha.status === 'vencido').length
-}
-
-/**
- * Realizado do mês: soma do preço de catálogo dos atendimentos registrados.
- *
- * É estimativa, e assumidamente: `attendance_records` não guarda valor cobrado,
- * então o que dá para somar é o preço padrão do procedimento no catálogo de
- * hoje. Desconto, cortesia e reajuste passado não aparecem. Serve para a barra
- * da meta, não para fechar caixa.
- */
-function somarRealizado(data: unknown): number {
-  const linhas = (data ?? []) as { procedures: { preco_centavos: number } | null }[]
-  return linhas.reduce((total, linha) => total + (linha.procedures?.preco_centavos ?? 0), 0)
 }

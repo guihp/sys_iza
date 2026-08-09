@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   caminhoNoBucket,
+  destinoDoArquivo,
   extensaoDeMime,
+  tituloDeNomeArquivo,
 } from '@/lib/pasta-paciente'
 
 describe('pasta-paciente', () => {
@@ -14,5 +16,17 @@ describe('pasta-paciente', () => {
     expect(extensaoDeMime('image/jpeg', true)).toBe('jpg')
     expect(extensaoDeMime('application/pdf', true)).toBeNull()
     expect(extensaoDeMime('application/pdf')).toBe('pdf')
+  })
+
+  it('classifica destino por mime', () => {
+    expect(destinoDoArquivo('image/png')).toBe('foto')
+    expect(destinoDoArquivo('application/pdf')).toBe('arquivo')
+    expect(destinoDoArquivo('image/gif')).toBeNull()
+  })
+
+  it('deriva título do nome do arquivo', () => {
+    expect(tituloDeNomeArquivo('termo-assinado.pdf')).toBe('termo-assinado')
+    expect(tituloDeNomeArquivo('/tmp/exame.lab.PDF')).toBe('exame.lab')
+    expect(tituloDeNomeArquivo('.hidden')).toBe('.hidden')
   })
 })

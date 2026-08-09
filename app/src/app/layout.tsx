@@ -24,12 +24,25 @@ const jost = Jost({
 export const metadata: Metadata = {
   title: 'Dra. Izadora Barros',
   description: 'Sistema de atendimento da clínica',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Clínica Izadora',
+  },
+  icons: {
+    apple: '/icons/icon-192.png',
+  },
 }
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover' as const,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#a17c4b' },
+    { media: '(prefers-color-scheme: dark)', color: '#c9a273' },
+  ],
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

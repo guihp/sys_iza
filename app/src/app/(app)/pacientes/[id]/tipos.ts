@@ -15,6 +15,7 @@ export type PacienteCadastro = {
   email: string | null
   endereco: string | null
   lead_source: string | null
+  procedimento_interesse_id: string | null
   contato_emergencia_nome: string | null
   contato_emergencia_parentesco: string | null
   contato_emergencia_telefone: string | null
@@ -25,12 +26,48 @@ export type PacienteCadastro = {
   aceita_email: boolean
 }
 
+/** Opção do select de procedimento de interesse no cadastro. */
+export type OpcaoProcedimentoInteresse = {
+  id: string
+  nome: string
+}
+
 export type ResultadoDaAcao = { ok: true } | { ok: false; erro: string }
+
+/** Resultado de salvar plano — devolve o id para o editor permanecer aberto. */
+export type ResultadoSalvarPlano =
+  | { ok: true; id: string }
+  | { ok: false; erro: string }
+
+/** Procedimento do catálogo usado na calculadora dos planos. */
+export type ProcedimentoDoPlano = {
+  id: string
+  nome: string
+  preco_centavos: number
+  categoria: string | null
+}
+
+/** Traço serializado do canvas de anotação (coordenadas 0–1). */
+export type PontoAnotacao = { x: number; y: number }
+
+export type TracoAnotacao = {
+  pontos: PontoAnotacao[]
+  cor: string
+  espessura: number
+  ferramenta: 'caneta' | 'borracha'
+}
+
+export type AnotacaoPlano = {
+  versao: 1
+  tracos: TracoAnotacao[]
+}
+
+export type TipoPlano = 'toxina' | 'preenchimento'
 
 export type AnamneseLinha = {
   id: string
   queixa_principal: string | null
-  autoconfianca_rosto: number | null
+  autoconfianca_rosto: string | null
   incomodo_rosto: string | null
   rosto_cansado: boolean | null
   prev_botox: boolean
@@ -132,15 +169,18 @@ export type ItemBotox = {
   diluicao_seringa: string | null
   quantidade_unidades: number | null
   total_unidades: number | null
+  procedimento_id: string | null
   ordem: number
 }
 
 export type PlanoBotox = {
   id: string
+  realizado_em: string
   produto_nome: string | null
   validade: string | null
   lote: string | null
   marca: string | null
+  anotacao_json: AnotacaoPlano | null
   itens: ItemBotox[]
 }
 
@@ -151,15 +191,18 @@ export type ItemFiller = {
   camada: string | null
   tecnica: string | null
   quantidade_ml: number | null
+  procedimento_id: string | null
   ordem: number
 }
 
 export type PlanoFiller = {
   id: string
+  realizado_em: string
   produto_nome: string | null
   validade: string | null
   lote: string | null
   marca: string | null
+  anotacao_json: AnotacaoPlano | null
   itens: ItemFiller[]
 }
 

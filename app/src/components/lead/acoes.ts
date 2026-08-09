@@ -6,17 +6,29 @@ import { requireSessao } from '@/auth/session'
 import { vincularAtribuicaoAoPaciente } from '@/lib/conversoes'
 import { normalizarTelefone } from '@/lib/phone'
 import { createServerClient } from '@/lib/supabase/server'
+import type { ProcedimentoParaLead, ResultadoDoLead } from './tipos'
 
 /** Violação de índice único no Postgres. Aqui só pode ser o telefone. */
 const TELEFONE_DUPLICADO = '23505'
-
-export type ResultadoDoLead = { ok: true; pacienteId: string } | { ok: false; erro: string }
 
 const schema = z.object({
   nome: z.string().trim().min(1, 'O nome é obrigatório.').max(120, 'Nome longo demais.'),
   telefone: z.string().trim().max(40).optional(),
   origem: z.string().trim().max(80).optional(),
+  procedimentoInteresseId: z.uuid().nullable().optional(),
 })
+
+/** Catálogo ativo para o select do NOVO LEAD (e ficha). */
+export async function listarProcedimentosParaLead(): Promise<ProcedimentoParaLead[]> {
+  await requireSessao()
+  const supabase = await createServerClient()
+  const { data } = await supabase
+    .from('procedures')
+    .select('id, nome, preco_centavos')
+    .eq('ativo', true)
+    .order('nome')
+  return (data ?? []) as ProcedimentoParaLead[]
+}
 
 /**
  * Cria um lead a partir do botão NOVO LEAD da barra superior.
@@ -35,16 +47,18 @@ const schema = z.object({
 export async function criarLead(formData: FormData): Promise<ResultadoDoLead> {
   const sessao = await requireSessao()
 
+  const procedimentoBruto = String(formData.get('procedimento_interesse_id') ?? '').trim()
   const analise = schema.safeParse({
     nome: formData.get('nome') ?? '',
     telefone: formData.get('telefone') ?? undefined,
     origem: formData.get('origem') ?? undefined,
+    procedimentoInteresseId: procedimentoBruto === '' ? null : procedimentoBruto,
   })
   if (!analise.success) {
     return { ok: false, erro: analise.error.issues[0]?.message ?? 'Dados inválidos.' }
   }
 
-  const { nome, telefone, origem } = analise.data
+  const { nome, telefone, origem, procedimentoInteresseId } = analise.data
 
   let e164: string | null = null
   if (telefone) {
@@ -55,12 +69,26 @@ export async function criarLead(formData: FormData): Promise<ResultadoDoLead> {
   }
 
   const supabase = await createServerClient()
+
+  if (procedimentoInteresseId) {
+    const { data: proc } = await supabase
+      .from('procedures')
+      .select('id')
+      .eq('id', procedimentoInteresseId)
+      .eq('ativo', true)
+      .maybeSingle()
+    if (!proc) {
+      return { ok: false, erro: 'Procedimento inválido ou inativo.' }
+    }
+  }
+
   const { data, error } = await supabase
     .from('patients')
     .insert({
       nome_completo: nome,
       telefone: e164,
       lead_source: origem || null,
+      procedimento_interesse_id: procedimentoInteresseId ?? null,
     })
     .select('id')
     .single()

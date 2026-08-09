@@ -1,8 +1,8 @@
 /**
  * KPIs e textos do funil — funções puras, testáveis sem banco.
  *
- * Procedimento de interesse ainda não existe em `patients`: potencial da
- * coluna e preço do cartão ficam em "—" / "A definir" até haver coluna.
+ * Potencial da coluna e preço do cartão saem de `potencial_centavos` (preço do
+ * procedimento de interesse no catálogo). Sem valor → "—" / "A definir".
  */
 
 import { dataDaClinica, deslocarData } from '@/lib/datetime'

@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
-import { BOTAO_PRINCIPAL, CAMPO } from '../campos'
+import { useRef, type ReactNode } from 'react'
+import { StatusAutosave } from '@/components/ui/status-autosave'
+import { useAutosaveForm } from '@/hooks/use-autosave'
+import { CAMPO } from '../campos'
 import { salvarAvaliacao } from './acoes-clinico'
 import type { AvaliacaoLinha } from './tipos'
 
@@ -38,6 +40,7 @@ function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
 
 /**
  * Avaliação de pele + exame físico — pág. 3. Só a Dra. grava.
+ * Autosave com debounce (~400ms) após cada alteração.
  */
 export function FormularioAvaliacao({
   pacienteId,
@@ -48,10 +51,18 @@ export function FormularioAvaliacao({
   avaliacao: AvaliacaoLinha | null
   somenteLeitura: boolean
 }) {
-  const [erro, setErro] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
-  const [pendente, iniciar] = useTransition()
+  const formRef = useRef<HTMLFormElement>(null)
   const a = avaliacao
+
+  const { status, erro, marcarAlterado } = useAutosaveForm({
+    enabled: !somenteLeitura,
+    save: async () => {
+      if (!formRef.current) {
+        return { ok: false, erro: 'Formulário indisponível para salvar.' }
+      }
+      return salvarAvaliacao(new FormData(formRef.current))
+    },
+  })
 
   if (somenteLeitura) {
     return (
@@ -64,31 +75,21 @@ export function FormularioAvaliacao({
 
   return (
     <form
+      ref={formRef}
       className="space-y-6"
-      onSubmit={(evento) => {
-        evento.preventDefault()
-        setErro(null)
-        setOk(null)
-        iniciar(async () => {
-          const resultado = await salvarAvaliacao(new FormData(evento.currentTarget))
-          if (!resultado.ok) {
-            setErro(resultado.erro)
-            return
-          }
-          setOk('Avaliação salva.')
-        })
-      }}
+      onSubmit={(evento) => evento.preventDefault()}
+      onChange={marcarAlterado}
     >
       <input type="hidden" name="pacienteId" value={pacienteId} />
 
-      {erro ? (
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-texto/50">Alterações são salvas automaticamente.</p>
+        <StatusAutosave status={status} erro={erro} />
+      </div>
+
+      {erro && status === 'error' ? (
         <p role="alert" className="rounded-lg border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-700">
           {erro}
-        </p>
-      ) : null}
-      {ok ? (
-        <p role="status" className="rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
-          {ok}
         </p>
       ) : null}
 
@@ -290,10 +291,6 @@ export function FormularioAvaliacao({
           />
         </label>
       </Grupo>
-
-      <button type="submit" disabled={pendente} className={BOTAO_PRINCIPAL}>
-        {pendente ? 'Salvando…' : 'Salvar avaliação'}
-      </button>
     </form>
   )
 }

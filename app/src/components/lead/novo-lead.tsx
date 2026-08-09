@@ -1,18 +1,19 @@
 'use client'
 
-import { useRef, useState, useTransition, type FormEvent } from 'react'
+import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
 import { Pilula, RotuloMiudo } from '@/components/ui'
-import { criarLead } from './acoes'
+import { criarLead, listarProcedimentosParaLead } from './acoes'
+import type { ProcedimentoParaLead } from './tipos'
 
 const CAMPO =
-  'w-full rounded-cartao border border-linha bg-superficie px-3 py-2 text-[14px] placeholder:text-texto-suave'
+  'w-full rounded-cartao border border-linha bg-superficie px-3 py-2.5 text-[14px] placeholder:text-texto-suave'
 
 /**
  * NOVO LEAD — o botão sólido da direita da barra superior.
  *
- * Abre o cadastro mínimo de paciente: nome, telefone e origem. É o formulário
- * do balcão, não a ficha completa — quem atende o telefone precisa registrar a
- * pessoa em três campos e voltar a falar com ela.
+ * Abre o cadastro mínimo de paciente: nome, telefone, origem e procedimento de
+ * interesse. É o formulário do balcão, não a ficha completa — quem atende o
+ * telefone precisa registrar a pessoa em poucos campos e voltar a falar com ela.
  *
  * `<dialog>` nativo em vez de uma div com `position: fixed`: ele já entrega
  * fechar no Esc, foco preso dentro do modal e o resto da página inerte, tudo
@@ -25,6 +26,17 @@ export function NovoLead() {
   const formulario = useRef<HTMLFormElement>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, iniciar] = useTransition()
+  const [procedimentos, setProcedimentos] = useState<ProcedimentoParaLead[] | null>(null)
+
+  useEffect(() => {
+    let cancelado = false
+    void listarProcedimentosParaLead().then((lista) => {
+      if (!cancelado) setProcedimentos(lista)
+    })
+    return () => {
+      cancelado = true
+    }
+  }, [])
 
   function abrir() {
     setErro(null)
@@ -119,6 +131,18 @@ export function NovoLead() {
               placeholder="Instagram, indicação…"
               className={CAMPO}
             />
+          </label>
+
+          <label className="block space-y-1">
+            <RotuloMiudo className="block">Procedimento de interesse</RotuloMiudo>
+            <select name="procedimento_interesse_id" defaultValue="" className={CAMPO}>
+              <option value="">A definir</option>
+              {(procedimentos ?? []).map((procedimento) => (
+                <option key={procedimento.id} value={procedimento.id}>
+                  {procedimento.nome}
+                </option>
+              ))}
+            </select>
           </label>
 
           {erro ? (

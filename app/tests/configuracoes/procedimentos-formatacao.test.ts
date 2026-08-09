@@ -3,6 +3,7 @@ import {
   descreverRetorno,
   formatarDuracao,
   formatarPreco,
+  mascararMoedaAoDigitar,
   precoParaCampo,
   reaisParaCentavos,
 } from '@/app/(app)/configuracoes/procedimentos/formatacao'
@@ -74,12 +75,43 @@ describe('reaisParaCentavos', () => {
 })
 
 describe('precoParaCampo', () => {
-  it('devolve o valor editável, sem símbolo de moeda', () => {
-    expect(precoParaCampo(180000)).toBe('1800,00')
+  it('devolve o valor editável com milhar e vírgula decimal, sem símbolo', () => {
+    expect(precoParaCampo(180000)).toBe('1.800,00')
+    expect(precoParaCampo(1240000)).toBe('12.400,00')
+    expect(precoParaCampo(2550)).toBe('25,50')
     expect(precoParaCampo(0)).toBe('0,00')
   })
 
   it('faz a volta completa com reaisParaCentavos', () => {
     expect(reaisParaCentavos(precoParaCampo(2550))).toBe(2550)
+    expect(reaisParaCentavos(precoParaCampo(1240000))).toBe(1240000)
+  })
+})
+
+describe('mascararMoedaAoDigitar', () => {
+  it('trata dígitos como centavos da direita para a esquerda', () => {
+    expect(mascararMoedaAoDigitar('1')).toBe('0,01')
+    expect(mascararMoedaAoDigitar('12')).toBe('0,12')
+    expect(mascararMoedaAoDigitar('123')).toBe('1,23')
+    expect(mascararMoedaAoDigitar('10000')).toBe('100,00')
+    expect(mascararMoedaAoDigitar('1000000')).toBe('10.000,00')
+    expect(mascararMoedaAoDigitar('1240000')).toBe('12.400,00')
+  })
+
+  it('ignora pontuação e símbolo ao colar valor já formatado', () => {
+    expect(mascararMoedaAoDigitar('R$ 1.800,00')).toBe('1.800,00')
+    expect(mascararMoedaAoDigitar('12.400,00')).toBe('12.400,00')
+  })
+
+  it('campo sem dígitos fica vazio; só zeros vira 0,00', () => {
+    expect(mascararMoedaAoDigitar('')).toBe('')
+    expect(mascararMoedaAoDigitar('abc')).toBe('')
+    expect(mascararMoedaAoDigitar('0')).toBe('0,00')
+    expect(mascararMoedaAoDigitar('000')).toBe('0,00')
+  })
+
+  it('volta para centavos com reaisParaCentavos', () => {
+    expect(reaisParaCentavos(mascararMoedaAoDigitar('1000000'))).toBe(1000000)
+    expect(reaisParaCentavos(mascararMoedaAoDigitar('2550'))).toBe(2550)
   })
 })

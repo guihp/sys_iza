@@ -4,6 +4,7 @@ import {
   descreverProgresso,
   formatarValorRedondo,
   progressoDaMeta,
+  statusDaMeta,
 } from '@/lib/meta'
 
 describe('progressoDaMeta', () => {
@@ -19,6 +20,18 @@ describe('progressoDaMeta', () => {
     const progresso = progressoDaMeta(META_MENSAL_CENTAVOS / 2, '2026-08-06')
     expect(progresso.percentualDaBarra).toBe(50)
     expect(progresso.percentualAlcancado).toBe(50)
+  })
+
+  it('aceita meta configurada diferente do fallback', () => {
+    const progresso = progressoDaMeta(500_000, '2026-08-06', 1_000_000)
+    expect(progresso.metaCentavos).toBe(1_000_000)
+    expect(progresso.percentualDaBarra).toBe(50)
+  })
+
+  it('com meta zero zera a barra em vez de Infinity', () => {
+    const progresso = progressoDaMeta(1_000_000, '2026-08-06', 0)
+    expect(progresso.percentualDaBarra).toBe(0)
+    expect(progresso.percentualAlcancado).toBe(0)
   })
 
   it('deixa o texto passar de 100% mas trava a barra em 100', () => {
@@ -64,5 +77,15 @@ describe('formatarValorRedondo', () => {
   it('mostra o valor sem centavos, para leitura de relance', () => {
     expect(formatarValorRedondo(0)).toBe(`R$${ESPACO}0`)
     expect(formatarValorRedondo(1_245_000)).toBe(`R$${ESPACO}12.450`)
+  })
+})
+
+describe('statusDaMeta (lib)', () => {
+  it('ultrapassa quando o realizado passa da meta', () => {
+    expect(statusDaMeta(META_MENSAL_CENTAVOS + 1, META_MENSAL_CENTAVOS)).toBe('ultrapassou')
+  })
+
+  it('mês em curso abaixo da meta é em progresso', () => {
+    expect(statusDaMeta(1, META_MENSAL_CENTAVOS, { mesEmCurso: true })).toBe('em_progresso')
   })
 })

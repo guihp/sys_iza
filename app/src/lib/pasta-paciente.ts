@@ -30,6 +30,20 @@ export function extensaoDeMime(tipo: string, soImagem = false): string | null {
   return mapa[tipo] ?? null
 }
 
+/** JPEG/PNG/WebP → foto clínica; PDF (e demais aceitos) → arquivo. */
+export function destinoDoArquivo(mimeType: string): 'foto' | 'arquivo' | null {
+  if (extensaoDeMime(mimeType, true)) return 'foto'
+  if (extensaoDeMime(mimeType, false)) return 'arquivo'
+  return null
+}
+
+/** Título a partir do nome do arquivo (sem extensão). */
+export function tituloDeNomeArquivo(nome: string): string {
+  const soNome = nome.replace(/^.*[/\\]/, '').trim()
+  const semExt = soNome.replace(/\.[^.]+$/, '').trim()
+  return semExt || soNome || 'Arquivo'
+}
+
 /**
  * Caminho no bucket: `{patientId}/fotos|arquivos/{uuid}.{ext}`.
  * Prefixo por paciente facilita políticas futuras e limpeza sob LGPD.

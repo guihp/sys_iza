@@ -15,6 +15,7 @@ export { CabecalhoDePagina } from './cabecalho-de-pagina'
 export { Cartao, CLASSES_CARTAO } from './cartao'
 export { juntar } from './classes'
 export { EstadoVazio } from './estado-vazio'
+export { StatusAutosave } from './status-autosave'
 export { iniciaisDoNome } from './iniciais'
 export { Kpi, LinhaDeKpis } from './kpi'
 export {

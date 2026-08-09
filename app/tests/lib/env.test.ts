@@ -103,3 +103,31 @@ describe('parseServerEnv — Meta Conversions API opcional', () => {
     expect(env.META_CAPI_TOKEN).toBe('EAAG0token')
   })
 })
+
+describe('parseServerEnv — Web Push VAPID opcional', () => {
+  it('sobe sem chaves VAPID', () => {
+    const env = parseServerEnv(completo)
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined()
+    expect(env.VAPID_SUBJECT).toBeUndefined()
+  })
+
+  it('trata variável vazia como ausente', () => {
+    const env = parseServerEnv({
+      ...completo,
+      VAPID_PRIVATE_KEY: '',
+      VAPID_SUBJECT: '   ',
+    })
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined()
+    expect(env.VAPID_SUBJECT).toBeUndefined()
+  })
+
+  it('aceita privada e subject quando o push é ligado', () => {
+    const env = parseServerEnv({
+      ...completo,
+      VAPID_PRIVATE_KEY: 'privado-de-teste',
+      VAPID_SUBJECT: 'mailto:dono@clinicaizadora.com.br',
+    })
+    expect(env.VAPID_PRIVATE_KEY).toBe('privado-de-teste')
+    expect(env.VAPID_SUBJECT).toBe('mailto:dono@clinicaizadora.com.br')
+  })
+})
