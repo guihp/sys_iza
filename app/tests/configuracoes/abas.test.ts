@@ -4,7 +4,14 @@ import {
   abaAtiva,
   abasParaPapel,
 } from '@/app/(app)/configuracoes/abas'
-import { ENDPOINTS_DA_API, ESTAGIOS_DA_API } from '@/app/(app)/configuracoes/api/conteudo'
+import {
+  CATALOGO_ERROS_API,
+  ENDPOINTS_DA_API,
+  ESTAGIOS_DA_API,
+  NAV_DO_PAINEL_API,
+  endpointsDaSecao,
+  montarCurlDoEndpoint,
+} from '@/app/(app)/configuracoes/api/conteudo'
 
 describe('ABAS_DE_CONFIGURACOES', () => {
   it('expõe Meta, Marca, Mensagens, Procedimentos, Notificações, Google e API nesta ordem', () => {
@@ -80,5 +87,34 @@ describe('documentação da API', () => {
   it('documenta os sete estágios', () => {
     expect(ESTAGIOS_DA_API).toHaveLength(7)
     expect(ESTAGIOS_DA_API).toContain('retorno')
+  })
+
+  it('expõe nav com visão, chave, recursos e erros', () => {
+    expect(NAV_DO_PAINEL_API.map((n) => n.id)).toEqual([
+      'visao',
+      'chave',
+      'pacientes',
+      'procedimentos',
+      'leads',
+      'agenda',
+      'erros',
+    ])
+  })
+
+  it('agrupa endpoints por seção', () => {
+    expect(endpointsDaSecao('pacientes').every((e) => e.secao === 'pacientes')).toBe(true)
+    expect(endpointsDaSecao('agenda').map((e) => e.caminho)).toContain('/api/agenda/agendar')
+  })
+
+  it('monta curl com domínio real e Bearer', () => {
+    const ep = ENDPOINTS_DA_API.find((e) => e.caminho === '/api/pacientes')!
+    const curl = montarCurlDoEndpoint('https://web.clinica.exemplo', ep)
+    expect(curl).toContain('https://web.clinica.exemplo/api/pacientes')
+    expect(curl).toContain('Authorization: Bearer $API_KEY')
+  })
+
+  it('cataloga erros com remédio', () => {
+    expect(CATALOGO_ERROS_API.map((e) => e.codigo)).toEqual([401, 400, 404, 422, 500])
+    expect(CATALOGO_ERROS_API.every((e) => e.quando && e.remédio)).toBe(true)
   })
 })

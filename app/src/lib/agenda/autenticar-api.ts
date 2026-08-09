@@ -3,7 +3,9 @@
  *
  * Aceita `Authorization: Bearer <chave>` ou `x-api-key: <chave>`.
  * Comparação em tempo constante quando os comprimentos batem.
- * A chave esperada vem de `API_KEY` (ou legado `AGENDA_API_KEY`).
+ * A chave esperada no env vem de `API_KEY` (ou legado `AGENDA_API_KEY`).
+ * O pedido autenticado também aceita hash em `clinic_settings` — ver
+ * `autenticarPedidoApi` / `chaveHttpValida`.
  */
 
 import { timingSafeEqual } from 'node:crypto'

@@ -47,6 +47,10 @@ services:
       GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # API HTTP (n8n) — opcional. Preferência: gerar chave em Configurações → API.
+      # Env continua como fallback (Coolify já preenchido segue válido).
+      API_KEY: ${API_KEY:-}
+      AGENDA_API_KEY: ${AGENDA_API_KEY:-}
     # `expose` e não `ports`: quem publica para a internet é o proxy do Coolify,
     # com o domínio configurado no painel. Publicar na porta do host aqui só
     # abriria o app direto, por fora do TLS.

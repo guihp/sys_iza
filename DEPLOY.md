@@ -140,18 +140,25 @@ as plataformas.
 
 ### API HTTP (n8n / automação) — opcional
 
-Rotas sob `/api/*` (pacientes, procedimentos, leads, agenda). Documentação
-completa na UI: **Configurações → API**. Autenticação:
+Rotas sob `/api/*` (pacientes, procedimentos, leads, agenda). Documentação,
+playground e geração de chave: **Configurações → API** (só a Dra. gera/rotaciona).
+
+Autenticação (qualquer um basta):
 
 1. Cookie de sessão da equipe (usuário logado), **ou**
-2. Chave no cabeçalho `Authorization: Bearer …` ou `x-api-key`
+2. Chave gerada no painel (hash em `clinic_settings`; plaintext mostrado **uma vez**), **ou**
+3. Variável de ambiente no Coolify (`API_KEY` / alias `AGENDA_API_KEY`)
+
+**Preferência:** gerar no painel. O env continua válido (Coolify já configurado
+não quebra). Cabeçalhos: `Authorization: Bearer …` ou `x-api-key`.
 
 | Variável | Onde encontrar | Observação |
 |---|---|---|
-| `API_KEY` | gerar localmente (`openssl rand -hex 32`) | **Segredo.** Preferida. Sem ela (e sem o alias) o caminho por chave fica desligado |
-| `AGENDA_API_KEY` | mesmo valor / legado | Aceita se `API_KEY` estiver vazia (Coolify já configurado continua válido) |
+| `API_KEY` | painel **ou** `openssl rand -hex 32` | **Segredo.** Fallback Coolify; opcional se a chave do painel existir |
+| `AGENDA_API_KEY` | mesmo valor / legado | Aceita se `API_KEY` estiver vazia |
 
-A chave **não vem da Meta** — você gera e cola no Coolify.
+Migration `0020_api_key_clinic_settings` precisa estar aplicada no Supabase antes
+do redeploy que usa geração no painel.
 
 Exemplo:
 
