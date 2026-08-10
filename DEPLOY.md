@@ -10,29 +10,34 @@ Sistema da Clínica Izadora: dois containers a partir deste repositório — `we
 
 ---
 
-## 1. Rede interna
+## 1. Rede (Coolify)
 
-O compose cria a rede `clinica-iza` automaticamente no deploy (não exige rede
-externa pré-existente). O default antigo (`n8n_default` + `external: true`)
-quebrava o Coolify se essa rede não existisse no host.
+**Não declare `networks:` no compose.** O Coolify cria a rede do stack e
+conecta o proxy (Traefik). Rede custom (`clinica-iza`, etc.) coloca o app em
+duas redes; o Traefik pode pegar o IP da rede errada → **Gateway Timeout**
+com o Next “Ready” nos logs. Isso é gotcha oficial do Coolify.
 
-A Evolution API costuma rodar **sem porta publicada**. Para o app alcançá-la,
-Evolution (e n8n, se precisar) precisa estar na **mesma** rede Docker:
+`web` e `worker` se falam pelos hostnames `web` / `worker` na rede do Coolify.
 
-1. Anexe Evolution/n8n à rede `clinica-iza`, **ou**
-2. Na VPS, crie/conecte a rede compartilhada e ligue os containers nela:
+**Evolution / n8n**
 
-```bash
-docker network ls
-docker network connect clinica-iza <container_evolution>
-```
+- Preferência: `EVOLUTION_URL` com domínio HTTPS público (ex. o que já está no
+  Coolify). Não precisa rede Docker compartilhada.
+- Se quiser hostname interno (`http://evolution:8080`): use um **Destination**
+  do Coolify (`Servers → Destinations`) e coloque Evolution e este stack no
+  mesmo destination — sem inventar `networks:` no YAML.
 
-`EVOLUTION_URL` deve usar o hostname Docker interno (ex.: `http://evolution:8080`),
-não um domínio público.
+---
 
-Não use variável de rede externa no Coolify a menos que a rede **já exista** no
-host — o compose não declara mais `external: true`.
+### Domínio no painel vs no browser
 
+No Coolify, Domains do `web` fica com a porta do container:
+
+`https://web.padariaidealsabores.com:3000`
+
+No browser, abra **sem** `:3000` — só `https://web.padariaidealsabores.com/...`.
+O `:3000` no painel é instrução pro Traefik (porta interna). Abrir `:3000` no
+Chrome dá `ERR_CONNECTION_REFUSED` (porta não publicada no host).
 ---
 
 ## 2. Variáveis de ambiente

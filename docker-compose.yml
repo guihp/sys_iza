@@ -71,7 +71,6 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    networks: [interna]
 
   worker:
     build:
@@ -96,14 +95,9 @@ services:
     # folgado para isso e fica acima do limite interno de 20s dele.
     stop_grace_period: 30s
     restart: unless-stopped
-    networks: [interna]
 
-networks:
-  # Rede gerenciada pelo compose (Coolify cria no deploy). Não depende de uma
-  # rede externa pré-existente — o default antigo `n8n_default` + external
-  # quebrava o deploy se essa rede não existisse no host.
-  #
-  # Para o app falar com Evolution/n8n na mesma VPS, coloque esses serviços
-  # nesta rede (`clinica-iza`) ou conecte os containers depois — ver DEPLOY.md.
-  interna:
-    name: clinica-iza
+# Sem `networks:` custom. Coolify cria a rede do stack e conecta o Traefik
+# nela. Rede nomeada (ex.: clinica-iza) deixa o container em 2 redes e o
+# proxy escolhe IP errado → Gateway Timeout. Docs Coolify: "Do Not Define
+# Custom Networks". web↔worker: hostnames `web` / `worker` na rede do Coolify.
+# Evolution: use EVOLUTION_URL pública (já é o caso) ou Destination do Coolify.
