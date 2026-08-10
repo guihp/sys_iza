@@ -1,17 +1,33 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, useTransition, type ChangeEvent } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { Cartao, Pilula, RotuloMiudo } from '@/components/ui'
-import type { MarcaDaClinica } from '@/lib/marca'
-import { removerFotoDoLogin, removerLogo, salvarFotoDoLogin, salvarLogo } from './acoes'
-
-/**
- * Formulário de marca — foto do login e logo.
- *
- * O `<input type="file">` nativo **sempre** volta a "Nenhum arquivo escolhido"
- * depois do reload (o browser não deixa pré-preencher). Por isso o status real
- * mora no texto ao lado ("Foto salva", "Prévia…"), não no input.
- */
+import {
+  estiloImagemDaLogo,
+  LOGO_ESCALA_MAX,
+  LOGO_ESCALA_MIN,
+  normalizarEnquadramento,
+  normalizarEscalaDaLogo,
+  normalizarPosicaoDaLogo,
+  type EnquadramentoDaLogo,
+  type MarcaDaClinica,
+} from '@/lib/marca'
+import {
+  removerFotoDoLogin,
+  removerLogo,
+  salvarEnquadramentoDaLogo,
+  salvarFotoDoLogin,
+  salvarLogo,
+} from './acoes'
+import { removerFundoDeImagem } from '@/lib/marca-remover-fundo'
 
 type Resultado =
   | { ok: true; marca: MarcaDaClinica }
@@ -23,22 +39,39 @@ function nomeDoArquivo(url: string | null): string | null {
   return pedaco && pedaco.length > 0 ? pedaco : null
 }
 
+function enqDaMarca(m: MarcaDaClinica): EnquadramentoDaLogo {
+  return { escala: m.logoEscala, posX: m.logoPosX, posY: m.logoPosY }
+}
+
+function enqSujo(a: EnquadramentoDaLogo, b: EnquadramentoDaLogo): boolean {
+  const x = normalizarEnquadramento(a)
+  const y = normalizarEnquadramento(b)
+  return x.escala !== y.escala || x.posX !== y.posX || x.posY !== y.posY
+}
+
 export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClinica }) {
   const [marca, setMarca] = useState(marcaInicial)
   const [previaHero, setPreviaHero] = useState<string | null>(null)
   const [arquivoHero, setArquivoHero] = useState<File | null>(null)
   const [previaLogo, setPreviaLogo] = useState<string | null>(null)
   const [arquivoLogo, setArquivoLogo] = useState<File | null>(null)
+  const [enq, setEnq] = useState(enqDaMarca(marcaInicial))
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
+  const [removendoFundo, setRemovendoFundo] = useState(false)
   const inputHero = useRef<HTMLInputElement>(null)
   const inputLogo = useRef<HTMLInputElement>(null)
+  const arrasto = useRef<{ x: number; y: number; posX: number; posY: number } | null>(null)
   const idHero = useId()
   const idLogo = useId()
+  const idZoom = useId()
+  const idPosX = useId()
+  const idPosY = useId()
 
   useEffect(() => {
     setMarca(marcaInicial)
+    setEnq(enqDaMarca(marcaInicial))
   }, [marcaInicial])
 
   useEffect(() => {
@@ -76,6 +109,11 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
     if (inputLogo.current) inputLogo.current.value = ''
   }
 
+  function aplicarMarca(proxima: MarcaDaClinica) {
+    setMarca(proxima)
+    setEnq(enqDaMarca(proxima))
+  }
+
   function salvar(
     arquivo: File | null,
     acao: (dados: FormData) => Promise<Resultado>,
@@ -96,7 +134,7 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
         setErro(resposta.erro)
         return
       }
-      setMarca(resposta.marca)
+      aplicarMarca(resposta.marca)
       setAviso(sucesso)
       limparLocal()
     })
@@ -111,14 +149,91 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
         setErro(resposta.erro)
         return
       }
-      setMarca(resposta.marca)
+      aplicarMarca(resposta.marca)
       setAviso(sucesso)
       limparLocal()
     })
   }
 
+  function gravarEnquadramento() {
+    setErro(null)
+    setAviso(null)
+    iniciar(async () => {
+      const resposta = await salvarEnquadramentoDaLogo(normalizarEnquadramento(enq))
+      if (!resposta.ok) {
+        setErro(resposta.erro)
+        return
+      }
+      aplicarMarca(resposta.marca)
+      setAviso('Enquadramento salvo — login, lateral e ícone do app.')
+    })
+  }
+
+  async function aoRemoverFundo() {
+    const fonte = arquivoLogo ?? previaLogo ?? marca.logoUrl
+    if (!fonte) {
+      setErro('Escolha ou salve uma logo antes de remover o fundo.')
+      return
+    }
+    setErro(null)
+    setAviso(null)
+    setRemovendoFundo(true)
+    try {
+      const semFundo = await removerFundoDeImagem(fonte)
+      if (previaLogo) URL.revokeObjectURL(previaLogo)
+      setArquivoLogo(semFundo)
+      setPreviaLogo(URL.createObjectURL(semFundo))
+      setAviso('Fundo removido (prévia). Clique em Salvar logo para gravar no sistema.')
+    } catch {
+      setErro(
+        'Não foi possível remover o fundo. Confira a conexão (baixa o modelo na 1ª vez) e tente de novo.',
+      )
+    } finally {
+      setRemovendoFundo(false)
+    }
+  }
+
+  function aoPointerDown(evento: ReactPointerEvent<HTMLDivElement>) {
+    if (!logoVisivel || pendente) return
+    evento.currentTarget.setPointerCapture(evento.pointerId)
+    arrasto.current = {
+      x: evento.clientX,
+      y: evento.clientY,
+      posX: enq.posX,
+      posY: enq.posY,
+    }
+  }
+
+  function aoPointerMove(evento: ReactPointerEvent<HTMLDivElement>) {
+    const inicio = arrasto.current
+    if (!inicio) return
+    const dx = evento.clientX - inicio.x
+    const dy = evento.clientY - inicio.y
+    // Arrastar a imagem: movimento inverso no foco (como pan de mapa).
+    setEnq((atual) =>
+      normalizarEnquadramento({
+        ...atual,
+        posX: inicio.posX - dx * 0.35,
+        posY: inicio.posY - dy * 0.35,
+      }),
+    )
+  }
+
+  function aoPointerUp(evento: ReactPointerEvent<HTMLDivElement>) {
+    if (arrasto.current) {
+      try {
+        evento.currentTarget.releasePointerCapture(evento.pointerId)
+      } catch {
+        /* já solto */
+      }
+    }
+    arrasto.current = null
+  }
+
   const heroVisivel = previaHero ?? marca.heroUrl
   const logoVisivel = previaLogo ?? marca.logoUrl
+  const zoomPct = Math.round(normalizarEscalaDaLogo(enq.escala) * 100)
+  const sujo = enqSujo(enq, enqDaMarca(marca))
 
   return (
     <div className="space-y-6">
@@ -220,35 +335,164 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
           <RotuloMiudo tom="acento">Logo</RotuloMiudo>
           <h2 className="font-serif text-[22px] leading-tight">Identidade</h2>
           <p className="text-[13px] text-texto-suave">
-            Aparece no login (ao lado do nome) e na barra lateral do sistema.
+            Recorte, zoom e remoção de fundo. Vale no login, na barra lateral e no ícone do app.
           </p>
         </div>
 
-        <div className="relative flex h-28 items-center justify-center rounded-cartao border border-linha bg-superficie-2">
+        <div
+          className={`relative mx-auto touch-none select-none overflow-hidden rounded-cartao border border-linha ${
+            logoVisivel ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
+          style={{
+            width: 200,
+            height: 72,
+            maxWidth: '100%',
+            backgroundColor: '#f3efe8',
+            backgroundImage:
+              'linear-gradient(45deg, #e4ded4 25%, transparent 25%), linear-gradient(-45deg, #e4ded4 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e4ded4 75%), linear-gradient(-45deg, transparent 75%, #e4ded4 75%)',
+            backgroundSize: '16px 16px',
+            backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0',
+          }}
+          onPointerDown={aoPointerDown}
+          onPointerMove={aoPointerMove}
+          onPointerUp={aoPointerUp}
+          onPointerCancel={aoPointerUp}
+        >
           {logoVisivel ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoVisivel}
               alt={previaLogo ? 'Prévia da logo' : 'Logo salva'}
-              className="max-h-20 max-w-[200px] object-contain"
+              draggable={false}
+              className="pointer-events-none"
+              style={estiloImagemDaLogo(enq)}
             />
           ) : (
-            <p className="text-[13px] text-texto-suave">Nenhuma logo ainda.</p>
+            <p className="flex h-full items-center justify-center text-[13px] text-texto-suave">
+              Nenhuma logo ainda.
+            </p>
           )}
           {previaLogo ? (
-            <span className="absolute left-3 top-3 rounded-full bg-solido px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-solido-texto">
+            <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-solido px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-solido-texto">
               Prévia
             </span>
           ) : marca.logoUrl ? (
-            <span className="absolute left-3 top-3 rounded-full bg-acento-suave px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-acento">
+            <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-acento-suave px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-acento">
               Salva
             </span>
           ) : null}
         </div>
+        <p className="text-center text-[12px] text-texto-mudo">
+          Arraste no quadro para escolher o recorte
+        </p>
+
+        <div className="space-y-4 rounded-cartao border border-linha-2 bg-superficie-2 p-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor={idZoom} className="text-[13px] text-texto">
+                Zoom
+              </label>
+              <span className="tabular-nums text-[13px] text-texto-suave">{zoomPct}%</span>
+            </div>
+            <input
+              id={idZoom}
+              type="range"
+              min={LOGO_ESCALA_MIN}
+              max={LOGO_ESCALA_MAX}
+              step={0.05}
+              value={enq.escala}
+              disabled={!logoVisivel || pendente}
+              onChange={(evento) =>
+                setEnq((a) => ({ ...a, escala: normalizarEscalaDaLogo(Number(evento.target.value)) }))
+              }
+              className="w-full accent-[var(--color-acento)] disabled:opacity-40"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor={idPosX} className="text-[13px] text-texto">
+                Lateral (esquerda ↔ direita)
+              </label>
+              <span className="tabular-nums text-[13px] text-texto-suave">
+                {Math.round(enq.posX)}%
+              </span>
+            </div>
+            <input
+              id={idPosX}
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={enq.posX}
+              disabled={!logoVisivel || pendente}
+              onChange={(evento) =>
+                setEnq((a) => ({
+                  ...a,
+                  posX: normalizarPosicaoDaLogo(Number(evento.target.value)),
+                }))
+              }
+              className="w-full accent-[var(--color-acento)] disabled:opacity-40"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor={idPosY} className="text-[13px] text-texto">
+                Vertical (cima ↔ baixo)
+              </label>
+              <span className="tabular-nums text-[13px] text-texto-suave">
+                {Math.round(enq.posY)}%
+              </span>
+            </div>
+            <input
+              id={idPosY}
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={enq.posY}
+              disabled={!logoVisivel || pendente}
+              onChange={(evento) =>
+                setEnq((a) => ({
+                  ...a,
+                  posY: normalizarPosicaoDaLogo(Number(evento.target.value)),
+                }))
+              }
+              className="w-full accent-[var(--color-acento)] disabled:opacity-40"
+            />
+          </div>
+
+          <p className="text-[12px] text-texto-mudo">
+            Zoom aproxima a arte dentro de um quadro fixo (menu não encolhe). Use laterais /
+            arraste pra enquadrar. Salve o enquadramento para gravar.
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <Pilula
+              type="button"
+              variante="solida"
+              disabled={pendente || !logoVisivel || !sujo}
+              onClick={gravarEnquadramento}
+            >
+              {pendente ? 'Salvando…' : 'Salvar enquadramento'}
+            </Pilula>
+            <Pilula
+              type="button"
+              variante="contorno"
+              disabled={pendente || !logoVisivel}
+              onClick={() =>
+                setEnq({ escala: 1, posX: 50, posY: 50 })
+              }
+            >
+              Resetar
+            </Pilula>
+          </div>
+        </div>
 
         <p className="text-[13px] text-texto-suave">
           {arquivoLogo
-            ? `Nova imagem: ${arquivoLogo.name} — clique em Salvar para gravar.`
+            ? `Nova imagem: ${arquivoLogo.name} — clique em Salvar logo para gravar.`
             : marca.logoUrl
               ? `Logo salva: ${nomeDoArquivo(marca.logoUrl)}`
               : 'Nenhuma logo salva.'}
@@ -268,8 +512,16 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
           </Pilula>
           <Pilula
             type="button"
+            variante="contorno"
+            disabled={pendente || removendoFundo || !(arquivoLogo || marca.logoUrl || previaLogo)}
+            onClick={() => void aoRemoverFundo()}
+          >
+            {removendoFundo ? 'Removendo fundo…' : 'Remover fundo'}
+          </Pilula>
+          <Pilula
+            type="button"
             variante="solida"
-            disabled={pendente || !arquivoLogo}
+            disabled={pendente || removendoFundo || !arquivoLogo}
             onClick={() => salvar(arquivoLogo, salvarLogo, 'Logo salva.', limparLogoLocal)}
           >
             {pendente ? 'Salvando…' : 'Salvar logo'}
@@ -278,7 +530,7 @@ export function FormularioDaMarca({ marcaInicial }: { marcaInicial: MarcaDaClini
             <Pilula
               type="button"
               variante="contorno"
-              disabled={pendente}
+              disabled={pendente || removendoFundo}
               onClick={() => {
                 if (arquivoLogo) {
                   limparLogoLocal()

@@ -5,9 +5,12 @@ import { exigirDra, ErroDePermissao } from '@/auth/guard'
 import { getSessao } from '@/auth/session'
 import {
   atualizarCampoDaMarca,
+  atualizarEnquadramentoDaLogo,
   extensaoDoTipo,
+  normalizarEnquadramento,
   salvarArquivoDaMarca,
   TAMANHO_MAXIMO_BYTES,
+  type EnquadramentoDaLogo,
   type MarcaDaClinica,
 } from '@/lib/marca'
 
@@ -24,6 +27,13 @@ async function exigirDraNaMarca() {
     throw erro
   }
   return sessao
+}
+
+function revalidarMarca() {
+  revalidatePath('/login')
+  revalidatePath('/configuracoes/marca')
+  revalidatePath('/', 'layout')
+  revalidatePath('/manifest.webmanifest')
 }
 
 async function gravarCampo(
@@ -50,9 +60,7 @@ async function gravarCampo(
     const bytes = new Uint8Array(await arquivo.arrayBuffer())
     const url = await salvarArquivoDaMarca(bytes, arquivo.type, papel)
     const marca = await atualizarCampoDaMarca(campo, url)
-    revalidatePath('/login')
-    revalidatePath('/configuracoes/marca')
-    revalidatePath('/', 'layout')
+    revalidarMarca()
     return { ok: true, marca }
   } catch {
     return { ok: false, erro: 'Não foi possível salvar a imagem. Tente de novo.' }
@@ -67,13 +75,41 @@ export async function salvarLogo(dados: FormData): Promise<ResultadoDaMarca> {
   return gravarCampo('logoUrl', 'logo', dados)
 }
 
+export async function salvarEnquadramentoDaLogo(
+  entrada: EnquadramentoDaLogo,
+): Promise<ResultadoDaMarca> {
+  if (!(await exigirDraNaMarca())) {
+    return { ok: false, erro: 'Só a doutora altera a marca da clínica.' }
+  }
+  try {
+    const marca = await atualizarEnquadramentoDaLogo(normalizarEnquadramento(entrada))
+    revalidarMarca()
+    return { ok: true, marca }
+  } catch {
+    return { ok: false, erro: 'Não foi possível salvar o enquadramento.' }
+  }
+}
+
+/** Compat: só zoom (mantém posição atual no banco via lib). */
+export async function salvarZoomDaLogo(escala: number): Promise<ResultadoDaMarca> {
+  if (!(await exigirDraNaMarca())) {
+    return { ok: false, erro: 'Só a doutora altera a marca da clínica.' }
+  }
+  try {
+    const marca = await atualizarEnquadramentoDaLogo({ escala })
+    revalidarMarca()
+    return { ok: true, marca }
+  } catch {
+    return { ok: false, erro: 'Não foi possível salvar o zoom da logo.' }
+  }
+}
+
 export async function removerFotoDoLogin(): Promise<ResultadoDaMarca> {
   if (!(await exigirDraNaMarca())) {
     return { ok: false, erro: 'Só a doutora altera a marca da clínica.' }
   }
   const marca = await atualizarCampoDaMarca('heroUrl', null)
-  revalidatePath('/login')
-  revalidatePath('/configuracoes/marca')
+  revalidarMarca()
   return { ok: true, marca }
 }
 
@@ -82,8 +118,6 @@ export async function removerLogo(): Promise<ResultadoDaMarca> {
     return { ok: false, erro: 'Só a doutora altera a marca da clínica.' }
   }
   const marca = await atualizarCampoDaMarca('logoUrl', null)
-  revalidatePath('/login')
-  revalidatePath('/configuracoes/marca')
-  revalidatePath('/', 'layout')
+  revalidarMarca()
   return { ok: true, marca }
 }

@@ -12,7 +12,7 @@
  *   todos os aparelhos. Sem `silent: true`, o SO decide o áudio.
  */
 
-const CACHE = 'clinica-iza-shell-v3'
+const CACHE = 'clinica-iza-shell-v4'
 const SHELL = [
   '/',
   '/manifest.webmanifest',

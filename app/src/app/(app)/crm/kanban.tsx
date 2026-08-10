@@ -77,7 +77,7 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+    <div className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4">
       {erro && (
         <p role="alert" className="shrink-0 text-sm text-red-600">
           {erro}
@@ -85,7 +85,7 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
       )}
 
       {/* Telefone / tablet: pills de estágio — uma coluna por vez. */}
-      <div className="shrink-0 lg:hidden">
+      <div className="min-w-0 shrink-0 lg:hidden">
         <div
           role="tablist"
           aria-label="Estágios do funil"
@@ -122,7 +122,7 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
       </div>
 
       {/* Mobile: coluna única da aba ativa. */}
-      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+      <div className="flex h-0 min-h-0 min-w-0 flex-1 flex-col lg:hidden">
         <Coluna
           estagio={aba}
           lista={colunas[aba]}
@@ -136,11 +136,10 @@ export function Kanban({ pacientes }: { pacientes: PacienteDoFunil[] }) {
       </div>
 
       {/*
-        Desktop `lg+`: board horizontal de 7 colunas.
-        `flex-1 min-h-0` preenche até o rodapé do `<main>`: a barra horizontal
-        fica embaixo da tela, não grudada sob as colunas vazias.
+        Desktop `lg+`: largura confortável por coluna (`min-w-[280px]`); se não
+        cabem as 7, scroll horizontal só neste board (shell `fixed` trava a página).
       */}
-      <div className="hidden min-h-0 flex-1 items-stretch gap-4 overflow-x-auto pb-1 lg:flex">
+      <div className="hidden h-0 min-h-0 min-w-0 flex-1 items-stretch gap-3 overflow-x-auto pb-1 lg:flex">
         {ESTAGIOS.map((estagio) => (
           <Coluna
             key={estagio}
@@ -188,25 +187,27 @@ function Coluna({
       onDragLeave={aoSairArrasto}
       onDrop={(evento) => aoSoltar(evento, estagio)}
       className={`flex min-h-0 flex-col gap-3 rounded-2xl border bg-superficie p-3 shadow-[var(--shadow-painel)] transition-[border-color,box-shadow] sm:p-4 ${
-        larga ? 'h-full w-full' : 'h-full w-[282px] shrink-0'
+        larga
+          ? 'h-full w-full min-w-0'
+          : 'h-full w-[280px] shrink-0'
       } ${alvo === estagio ? 'border-acento' : 'border-linha'}`}
     >
       <header className="flex shrink-0 flex-col gap-1.5">
         <div className="flex items-center justify-between gap-2.5">
-          <h2 className="flex items-center gap-2.5 font-serif text-[17px] tracking-[0.01em] sm:text-[18px]">
+          <h2 className="flex min-w-0 items-center gap-2.5 font-serif text-[17px] tracking-[0.01em] sm:text-[18px]">
             <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-acento" />
-            {ROTULOS[estagio]}
+            <span className="truncate">{ROTULOS[estagio]}</span>
           </h2>
-          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-linha-2 px-1.5 text-[11.5px] text-texto-suave">
+          <span className="flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-full bg-linha-2 px-1.5 text-[11.5px] text-texto-suave">
             {lista.length}
           </span>
         </div>
-        <p className="text-[11px] tracking-[0.04em] text-texto-mudo">
+        <p className="truncate text-[11px] tracking-[0.04em] text-texto-mudo">
           {textoPotencialDaColuna(lista.map((p) => p.potencial_centavos))}
         </p>
       </header>
 
-      <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
+      <ul className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain">
         {lista.length === 0 && (
           <li className="flex items-center justify-center rounded-[13px] border border-dashed border-linha px-3 py-6 text-center text-[12.5px] text-texto-mudo">
             Nenhum paciente neste estágio
@@ -266,7 +267,7 @@ function Cartao({
         </div>
       </div>
 
-      <p className="font-serif text-[15.5px] leading-tight text-texto">{procedimento}</p>
+      <p className="truncate font-serif text-[15.5px] leading-tight text-texto">{procedimento}</p>
 
       <div className="flex items-center justify-between gap-2 border-t border-linha-2 pt-2.5">
         <span className="text-[12.5px] tracking-[0.02em] text-texto-suave">

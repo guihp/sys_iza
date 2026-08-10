@@ -1,27 +1,41 @@
 /**
  * Marca visual da clínica — foto do login e logo.
  *
- * ---------------------------------------------------------------------------
- * ONDE MORA O DADO
- * ---------------------------------------------------------------------------
- * Arquivos no bucket público `marca-clinica` (Supabase Storage). URLs em
- * `clinic_settings.hero_url` / `logo_url`. Login lê via service role (página
- * pública sem sessão).
- *
- * Antes: `public/marca/` em disco — quebra no Docker standalone (arquivo some,
- * mapa fica, browser toma 404).
+ * Arquivos no bucket `marca-clinica`. URLs + enquadramento (zoom + foco X/Y)
+ * em `clinic_settings`. Login lê via service role.
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type MarcaDaClinica = {
-  /** URL pública da foto do login, ou null. */
   heroUrl: string | null
-  /** URL pública da logo, ou null. */
   logoUrl: string | null
+  /** Zoom da logo (0.5–4). 1 = padrão. */
+  logoEscala: number
+  /** Foco horizontal do recorte (0=esq, 100=dir). */
+  logoPosX: number
+  /** Foco vertical do recorte (0=topo, 100=base). */
+  logoPosY: number
 }
 
-export const MARCA_VAZIA: MarcaDaClinica = { heroUrl: null, logoUrl: null }
+export type EnquadramentoDaLogo = {
+  escala: number
+  posX: number
+  posY: number
+}
+
+export const LOGO_ESCALA_MIN = 0.5
+export const LOGO_ESCALA_MAX = 4
+export const LOGO_ESCALA_PADRAO = 1
+export const LOGO_POS_PADRAO = 50
+
+export const MARCA_VAZIA: MarcaDaClinica = {
+  heroUrl: null,
+  logoUrl: null,
+  logoEscala: LOGO_ESCALA_PADRAO,
+  logoPosX: LOGO_POS_PADRAO,
+  logoPosY: LOGO_POS_PADRAO,
+}
 
 export const BUCKET_MARCA = 'marca-clinica'
 
@@ -31,17 +45,72 @@ const TIPOS: Record<string, string> = {
   'image/webp': 'webp',
 }
 
-/** Teto de 5 MB — foto de clínica não precisa de mais. */
 export const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024
+
+const SELECT_MARCA = 'hero_url, logo_url, logo_escala, logo_pos_x, logo_pos_y'
 
 export function extensaoDoTipo(tipo: string): string | null {
   return TIPOS[tipo] ?? null
 }
 
+export function normalizarEscalaDaLogo(valor: unknown): number {
+  const n = typeof valor === 'number' ? valor : Number(valor)
+  if (!Number.isFinite(n)) return LOGO_ESCALA_PADRAO
+  const limitado = Math.min(LOGO_ESCALA_MAX, Math.max(LOGO_ESCALA_MIN, n))
+  return Math.round(limitado * 100) / 100
+}
+
+export function normalizarPosicaoDaLogo(valor: unknown): number {
+  const n = typeof valor === 'number' ? valor : Number(valor)
+  if (!Number.isFinite(n)) return LOGO_POS_PADRAO
+  const limitado = Math.min(100, Math.max(0, n))
+  return Math.round(limitado * 100) / 100
+}
+
+export function normalizarEnquadramento(entrada: Partial<EnquadramentoDaLogo>): EnquadramentoDaLogo {
+  return {
+    escala: normalizarEscalaDaLogo(entrada.escala ?? LOGO_ESCALA_PADRAO),
+    posX: normalizarPosicaoDaLogo(entrada.posX ?? LOGO_POS_PADRAO),
+    posY: normalizarPosicaoDaLogo(entrada.posY ?? LOGO_POS_PADRAO),
+  }
+}
+
 /**
- * Extrai o path do objeto a partir da URL pública do Storage.
- * Usado ao trocar/remover para apagar o arquivo antigo.
+ * Imagem no quadro fixo.
+ * Zoom = `transform: scale` (não muda o layout). Quadro tem overflow:hidden.
+ * `contain` + posição: com zoom 100% a arte cabe; com zoom >100% dá pra
+ * aproximar e deslocar o foco sem empurrar o menu.
  */
+export function estiloImagemDaLogo(enq: EnquadramentoDaLogo): {
+  objectFit: 'contain'
+  objectPosition: string
+  transform: string
+  transformOrigin: string
+  width: string
+  height: string
+} {
+  const e = normalizarEnquadramento(enq)
+  return {
+    objectFit: 'contain',
+    objectPosition: `${e.posX}% ${e.posY}%`,
+    transform: `scale(${e.escala})`,
+    transformOrigin: `${e.posX}% ${e.posY}%`,
+    width: '100%',
+    height: '100%',
+  }
+}
+
+/** Tamanho fixo do quadro (zoom NÃO altera — só o scale da img). */
+export function tamanhoQuadroDaLogo(base: { alturaPx: number; larguraPx: number }): {
+  height: string
+  width: string
+} {
+  return {
+    height: `${base.alturaPx}px`,
+    width: `${base.larguraPx}px`,
+  }
+}
+
 export function caminhoDoStoragePublico(url: string): string | null {
   const marcador = `/storage/v1/object/public/${BUCKET_MARCA}/`
   const indice = url.indexOf(marcador)
@@ -55,7 +124,6 @@ export function caminhoDoStoragePublico(url: string): string | null {
   }
 }
 
-/** URL do bucket atual, ou caminho legado `/marca/` (pré-Storage). */
 export function ehUrlDaMarca(valor: unknown): valor is string {
   if (typeof valor !== 'string' || valor.length === 0) return false
   if (valor.startsWith('/marca/')) return true
@@ -65,6 +133,9 @@ export function ehUrlDaMarca(valor: unknown): valor is string {
 type LinhaMarca = {
   hero_url: string | null
   logo_url: string | null
+  logo_escala?: number | string | null
+  logo_pos_x?: number | string | null
+  logo_pos_y?: number | string | null
 }
 
 function marcaDaLinha(linha: LinhaMarca | null): MarcaDaClinica {
@@ -72,16 +143,18 @@ function marcaDaLinha(linha: LinhaMarca | null): MarcaDaClinica {
   return {
     heroUrl: ehUrlDaMarca(linha.hero_url) ? linha.hero_url : null,
     logoUrl: ehUrlDaMarca(linha.logo_url) ? linha.logo_url : null,
+    logoEscala: normalizarEscalaDaLogo(linha.logo_escala ?? LOGO_ESCALA_PADRAO),
+    logoPosX: normalizarPosicaoDaLogo(linha.logo_pos_x ?? LOGO_POS_PADRAO),
+    logoPosY: normalizarPosicaoDaLogo(linha.logo_pos_y ?? LOGO_POS_PADRAO),
   }
 }
 
-/** Lê hero/logo. Service role: a tela de login não tem cookie de sessão. */
 export async function carregarMarca(): Promise<MarcaDaClinica> {
   try {
     const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('clinic_settings')
-      .select('hero_url, logo_url')
+      .select(SELECT_MARCA)
       .eq('id', true)
       .maybeSingle()
     if (error) return { ...MARCA_VAZIA }
@@ -99,10 +172,6 @@ async function apagarArquivoAntigo(url: string | null): Promise<void> {
   await supabase.storage.from(BUCKET_MARCA).remove([path])
 }
 
-/**
- * Sobe o arquivo no Storage e devolve a URL pública.
- * Quem chama valida tipo/tamanho e papel antes.
- */
 export async function salvarArquivoDaMarca(
   bytes: Uint8Array,
   tipo: string,
@@ -140,7 +209,7 @@ export async function atualizarCampoDaMarca(
       atualizado_em: new Date().toISOString(),
     })
     .eq('id', true)
-    .select('hero_url, logo_url')
+    .select(SELECT_MARCA)
     .single()
 
   if (error || !data) {
@@ -152,4 +221,38 @@ export async function atualizarCampoDaMarca(
   }
 
   return marcaDaLinha(data as LinhaMarca)
+}
+
+export async function atualizarEnquadramentoDaLogo(
+  entrada: Partial<EnquadramentoDaLogo>,
+): Promise<MarcaDaClinica> {
+  const e = normalizarEnquadramento(entrada)
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('clinic_settings')
+    .update({
+      logo_escala: e.escala,
+      logo_pos_x: e.posX,
+      logo_pos_y: e.posY,
+      atualizado_em: new Date().toISOString(),
+    })
+    .eq('id', true)
+    .select(SELECT_MARCA)
+    .single()
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'Falha ao gravar o enquadramento da logo.')
+  }
+
+  return marcaDaLinha(data as LinhaMarca)
+}
+
+/** @deprecated use atualizarEnquadramentoDaLogo */
+export async function atualizarEscalaDaLogo(escala: number): Promise<MarcaDaClinica> {
+  const atual = await carregarMarca()
+  return atualizarEnquadramentoDaLogo({
+    escala,
+    posX: atual.logoPosX,
+    posY: atual.logoPosY,
+  })
 }

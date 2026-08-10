@@ -29,6 +29,9 @@ export default async function LayoutProtegido({ children }: { children: React.Re
         metaDoMesCentavos={metaDoMesCentavos}
         hojeISO={hojeISO}
         logoUrl={marca.logoUrl}
+        logoEscala={marca.logoEscala}
+        logoPosX={marca.logoPosX}
+        logoPosY={marca.logoPosY}
       >
         {children}
       </AppShell>

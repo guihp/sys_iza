@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { LogoEnquadrada } from '@/components/logo-enquadrada'
 import { createBrowserClient } from '@/lib/supabase/browser'
 import type { MarcaDaClinica } from '@/lib/marca'
 import './login.css'
@@ -110,11 +111,17 @@ export function FormularioDeLogin({ marca }: { marca: MarcaDaClinica }) {
 
           <header className="login-rise relative flex flex-col gap-3">
             {marca.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <LogoEnquadrada
                 src={marca.logoUrl}
                 alt=""
-                className="mb-2 h-10 w-auto max-w-[min(160px,70vw)] object-contain"
+                enquadramento={{
+                  escala: marca.logoEscala,
+                  posX: marca.logoPosX,
+                  posY: marca.logoPosY,
+                }}
+                alturaPx={56}
+                larguraPx={180}
+                className="mb-2"
               />
             ) : (
               <div className="login-line h-px w-10 bg-[#a17c4b]" />

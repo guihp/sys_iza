@@ -8,8 +8,10 @@ import { NovoLead } from '@/components/lead/novo-lead'
 import { NavegacaoLateral } from '@/components/navegacao-lateral'
 import { BotaoInstalarApp } from '@/components/pwa/instalar-app'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { LogoEnquadrada } from '@/components/logo-enquadrada'
 import { Avatar, Cartao, RotuloMiudo, juntar } from '@/components/ui'
 import { dataDaClinica, formatarDiaComData } from '@/lib/datetime'
+import { LOGO_ESCALA_PADRAO, LOGO_POS_PADRAO } from '@/lib/marca'
 import {
   descreverProgresso,
   formatarValorRedondo,
@@ -40,13 +42,19 @@ export type DadosDaCasca = {
   hojeISO?: string
   /** Logo pública (`/marca/...`). Ausente = filete dourado. */
   logoUrl?: string | null
+  /** Zoom da logo (0.5–4). Ausente = 1. */
+  logoEscala?: number
+  /** Foco horizontal do recorte (0–100). */
+  logoPosX?: number
+  /** Foco vertical do recorte (0–100). */
+  logoPosY?: number
 }
 
 /**
  * Casca do sistema: duas colunas na viewport.
  *
- * **Desktop (`lg+`):** sidebar fixa na tela — coluna `h-dvh` sticky; o miolo da
- * navegação rola; o conteúdo rola no `<main>`.
+ * **Desktop (`lg+`):** sidebar na coluna; casca `fixed inset-0` (sem scroll
+ * do documento). Conteúdo rola no `<main>`.
  *
  * **Telefone e tablet em retrato (`< lg`):** a sidebar vira gaveta overlay.
  * O conteúdo usa a largura inteira; o menu abre pelo botão no cabeçalho.
@@ -61,6 +69,9 @@ export function AppShell({
   metaDoMesCentavos,
   hojeISO,
   logoUrl = null,
+  logoEscala = LOGO_ESCALA_PADRAO,
+  logoPosX = LOGO_POS_PADRAO,
+  logoPosY = LOGO_POS_PADRAO,
   children,
 }: { sessao: Sessao; children: React.ReactNode } & DadosDaCasca) {
   const itens = itensDeNavegacao(sessao.role)
@@ -85,7 +96,7 @@ export function AppShell({
   }, [menuAberto])
 
   return (
-    <div className="flex h-dvh bg-fundo text-texto">
+    <div className="fixed inset-0 flex overflow-hidden bg-fundo text-texto">
       {menuAberto ? (
         <button
           type="button"
@@ -99,21 +110,23 @@ export function AppShell({
         id={idDoMenu}
         aria-label="Navegação principal"
         className={juntar(
-          'flex h-dvh w-[min(18rem,88vw)] shrink-0 flex-col border-r border-linha bg-fundo px-5 py-6 sm:px-6 sm:py-8',
+          'flex h-full w-[min(18rem,88vw)] shrink-0 flex-col border-r border-linha bg-fundo px-5 py-6 sm:px-6 sm:py-8',
           'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out',
           'pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]',
-          'lg:sticky lg:top-0 lg:z-auto lg:w-64 lg:translate-x-0 lg:pt-8 lg:pb-8',
+          'lg:static lg:z-auto lg:w-64 lg:translate-x-0 lg:pt-8 lg:pb-8',
           menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- upload local
-              <img
+              <LogoEnquadrada
                 src={logoUrl}
                 alt="Logo da clínica"
-                className="mb-4 h-9 w-auto max-w-[140px] object-contain"
+                enquadramento={{ escala: logoEscala, posX: logoPosX, posY: logoPosY }}
+                alturaPx={56}
+                larguraPx={168}
+                className="mb-4 shrink-0"
               />
             ) : (
               <span aria-hidden="true" className="mb-4 block h-0.5 w-10 bg-acento" />
@@ -191,8 +204,12 @@ export function AppShell({
         */}
         <main
           className={juntar(
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6 sm:py-8',
+            // Shell trava em h-dvh (`overflow-hidden` na raiz). Rolagem só aqui.
+            // `min-w-0` + `overflow-x-hidden`: funil não alarga o documento.
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6 sm:py-8',
             menuAberto && 'max-lg:overflow-hidden',
+            // Funil: sem scroll do main — o board preenche a altura e rola por coluna.
+            caminho === '/crm' && 'overflow-y-hidden py-4 sm:py-5',
           )}
         >
           {children}

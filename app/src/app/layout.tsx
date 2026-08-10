@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Cormorant_Garamond, Jost } from 'next/font/google'
+import { carregarMarca } from '@/lib/marca'
 import { SCRIPT_TEMA_INICIAL } from '@/lib/tema'
 import './globals.css'
 
@@ -21,26 +22,29 @@ const jost = Jost({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: 'Dra. Izadora Barros',
-  description: 'Sistema de atendimento da clínica',
-  manifest: '/manifest.webmanifest',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Clínica Izadora',
-  },
-  icons: {
-    icon: [
-      { url: '/Favicon_Logo_App.png', type: 'image/png' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-    shortcut: '/Favicon_Logo_App.png',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const marca = await carregarMarca()
+  const icone = marca.logoUrl ?? '/Favicon_Logo_App.png'
+  const apple = marca.logoUrl ?? '/icons/apple-touch-icon.png'
+
+  return {
+    title: 'Dra. Izadora Barros',
+    description: 'Sistema de atendimento da clínica',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: 'Clínica Izadora',
+    },
+    icons: {
+      icon: [
+        { url: icone, type: 'image/png' },
+        { url: marca.logoUrl ?? '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { url: marca.logoUrl ?? '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      ],
+      apple: [{ url: apple, sizes: '180x180', type: 'image/png' }],
+      shortcut: icone,
+    },
+  }
 }
 
 export const viewport = {

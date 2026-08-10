@@ -90,7 +90,7 @@ export default async function PaginaDoFunil() {
       : `+${kpis.novosNaSemana} esta semana`
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-6">
+    <section className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-4 sm:gap-5">
       <CabecalhoDePagina
         className="shrink-0"
         secao="Pipeline clínico"
