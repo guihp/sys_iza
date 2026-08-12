@@ -9,8 +9,9 @@ import {
   formatarDataExtensa,
   horaDaClinica,
   instanteDaClinica,
+  minutosDoDiaNaClinica,
 } from '@/lib/datetime'
-import { agendarConsulta } from './acoes'
+import { agendarConsulta, cancelarConsulta, remarcarConsulta } from './acoes'
 import {
   ALTURA_HORA_PX,
   ALTURA_PASSO_PX,
@@ -32,6 +33,7 @@ export type ConsultaNaAgenda = {
   status: StatusDeConsulta
   paciente: string
   procedimento: string
+  procedimentoId: string | null
   observacoes: string | null
 }
 
@@ -92,6 +94,7 @@ export function AgendaSemanal({
   procedimentos: OpcaoDeProcedimento[]
 }) {
   const [escolha, setEscolha] = useState<Escolha | null>(null)
+  const [edicao, setEdicao] = useState<ConsultaNaAgenda | null>(null)
 
   // Cancelada não entra na grade: ela pode sobrepor uma consulta viva — a
   // constraint do banco libera o horário justamente por estar cancelada — e dois
@@ -178,6 +181,15 @@ export function AgendaSemanal({
           pacientes={pacientes}
           procedimentos={procedimentos}
           aoFechar={() => setEscolha(null)}
+        />
+      )}
+
+      {edicao && (
+        <DialogoDeEdicao
+          consulta={edicao}
+          diasDaGrade={dias}
+          procedimentos={procedimentos}
+          aoFechar={() => setEdicao(null)}
         />
       )}
 
@@ -287,10 +299,13 @@ export function AgendaSemanal({
 
                   <div className="pointer-events-none absolute inset-0">
                     {blocos[indiceDoDia].map(({ consulta, topPx, heightPx }) => (
-                      <article
+                      <button
                         key={consulta.id}
+                        type="button"
+                        onClick={() => setEdicao(consulta)}
+                        aria-label={`Editar consulta de ${consulta.paciente}`}
                         style={{ top: topPx, height: heightPx }}
-                        className="pointer-events-auto absolute right-[5px] left-[5px] flex cursor-default flex-col gap-0.5 overflow-hidden rounded-[11px] border border-acento bg-acento-suave px-2.5 py-2 transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-[0_12px_24px_-16px_rgba(27,24,21,0.45)]"
+                        className="pointer-events-auto absolute right-[5px] left-[5px] flex cursor-pointer flex-col gap-0.5 overflow-hidden rounded-[11px] border border-acento bg-acento-suave px-2.5 py-2 text-left transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-[0_12px_24px_-16px_rgba(27,24,21,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-acento"
                       >
                         <span className="shrink-0 whitespace-nowrap text-[10px] tracking-[0.08em] text-acento">
                           {horaDaClinica(new Date(consulta.inicio))} –{' '}
@@ -302,7 +317,7 @@ export function AgendaSemanal({
                         <span className="truncate text-[11px] leading-tight text-texto-suave">
                           {consulta.procedimento}
                         </span>
-                      </article>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -319,6 +334,7 @@ export function AgendaSemanal({
           titulo="Fora do horário da grade"
           explicacao={`A grade mostra das ${hhmm(FAIXAS[0])} às ${hhmm(FAIXAS.at(-1)! + PASSO_MINUTOS)}. Estas consultas estão fora dessa faixa.`}
           consultas={foraDaGrade}
+          aoEditar={setEdicao}
         />
       )}
 
@@ -360,10 +376,12 @@ function ListaDeConsultas({
   titulo,
   explicacao,
   consultas,
+  aoEditar,
 }: {
   titulo: string
   explicacao: string
   consultas: ConsultaNaAgenda[]
+  aoEditar?: (consulta: ConsultaNaAgenda) => void
 }) {
   return (
     <section className="rounded-[18px] border border-linha bg-superficie p-4 shadow-[var(--shadow-painel)]">
@@ -372,12 +390,26 @@ function ListaDeConsultas({
       <ul className="space-y-1 text-[13px]">
         {consultas.map((consulta) => (
           <li key={consulta.id} className="break-words text-texto-suave">
-            {/* A data sai de `dataDaClinica`, não dos dez primeiros caracteres
+            {aoEditar && consulta.status !== 'cancelado' ? (
+              <button
+                type="button"
+                onClick={() => aoEditar(consulta)}
+                className="text-left hover:text-texto hover:underline focus:outline-none focus-visible:underline"
+              >
+                {formatarDataExtensa(dataDaClinica(new Date(consulta.inicio)))} ·{' '}
+                {horaDaClinica(new Date(consulta.inicio))} · {consulta.paciente} ·{' '}
+                {consulta.procedimento} · {ROTULOS_DE_STATUS[consulta.status]}
+              </button>
+            ) : (
+              <>
+                {/* A data sai de `dataDaClinica`, não dos dez primeiros caracteres
                 do ISO: uma consulta às 21:00 de Brasília já é o dia seguinte em
                 UTC, e a lista mostraria a data errada. */}
-            {formatarDataExtensa(dataDaClinica(new Date(consulta.inicio)))} ·{' '}
-            {horaDaClinica(new Date(consulta.inicio))} · {consulta.paciente} ·{' '}
-            {consulta.procedimento} · {ROTULOS_DE_STATUS[consulta.status]}
+                {formatarDataExtensa(dataDaClinica(new Date(consulta.inicio)))} ·{' '}
+                {horaDaClinica(new Date(consulta.inicio))} · {consulta.paciente} ·{' '}
+                {consulta.procedimento} · {ROTULOS_DE_STATUS[consulta.status]}
+              </>
+            )}
           </li>
         ))}
       </ul>
@@ -401,10 +433,13 @@ function DialogoDeAgendamento({
   const dialogo = useRef<HTMLDialogElement>(null)
   const [dataISO, setDataISO] = useState(escolhaInicial.dataISO)
   const [minutos, setMinutos] = useState(escolhaInicial.minutos)
+  const [modoPaciente, setModoPaciente] = useState<'lista' | 'novo'>(
+    pacientes.length === 0 ? 'novo' : 'lista',
+  )
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciarTransicao] = useTransition()
 
-  const semCadastro = pacientes.length === 0 || procedimentos.length === 0
+  const semProcedimento = procedimentos.length === 0
   const horariosDoDia = FAIXAS.filter((faixa) => faixaAberta(dataISO, faixa))
 
   useEffect(() => {
@@ -430,15 +465,27 @@ function DialogoDeAgendamento({
     const campos = new FormData(evento.currentTarget)
     setErro(null)
 
+    const procedimentoId = String(campos.get('procedimento') ?? '')
+    const inicio = instanteDaClinica(dataISO, minutos).toISOString()
+
     iniciarTransicao(async () => {
-      const resultado = await agendarConsulta({
-        pacienteId: String(campos.get('paciente') ?? ''),
-        procedimentoId: String(campos.get('procedimento') ?? ''),
-        // O instante é montado aqui, com o fuso da clínica explícito.
-        // Um `new Date('2026-08-10T14:00')` usaria o fuso do navegador —
-        // que é o de quem abriu a tela, não o da clínica.
-        inicio: instanteDaClinica(dataISO, minutos).toISOString(),
-      })
+      const payload =
+        modoPaciente === 'novo'
+          ? {
+              pacienteNovo: {
+                nome: String(campos.get('nomeNovo') ?? ''),
+                telefone: String(campos.get('telefoneNovo') ?? '').trim() || undefined,
+              },
+              procedimentoId,
+              inicio,
+            }
+          : {
+              pacienteId: String(campos.get('paciente') ?? ''),
+              procedimentoId,
+              inicio,
+            }
+
+      const resultado = await agendarConsulta(payload)
 
       if (resultado.ok) {
         fechar()
@@ -464,8 +511,8 @@ function DialogoDeAgendamento({
           Nova consulta
         </h2>
         <p className="text-[13px] leading-relaxed text-texto-suave">
-          A duração vem do procedimento. Horário ocupado ou fora do expediente é
-          recusado com o motivo.
+          Paciente da lista ou nome novo neste pop-up. A duração vem do procedimento.
+          Horário ocupado ou fora do expediente é recusado com o motivo.
         </p>
       </div>
 
@@ -478,10 +525,10 @@ function DialogoDeAgendamento({
         </p>
       )}
 
-      {semCadastro ? (
+      {semProcedimento ? (
         <div className="space-y-4">
           <p className="text-sm text-texto-suave">
-            Cadastre ao menos um paciente no funil e um procedimento no catálogo antes de agendar.
+            Cadastre ao menos um procedimento no catálogo antes de agendar.
           </p>
           <div className="flex justify-end">
             <Pilula type="button" variante="contorno" onClick={fechar}>
@@ -528,19 +575,73 @@ function DialogoDeAgendamento({
               )}
             </label>
 
-            <label className="block space-y-1 sm:col-span-2">
-              <RotuloMiudo>Paciente</RotuloMiudo>
-              <select name="paciente" required defaultValue="" className={CAMPO}>
-                <option value="" disabled>
-                  Escolha o paciente
-                </option>
-                {pacientes.map((paciente) => (
-                  <option key={paciente.id} value={paciente.id}>
-                    {paciente.nome}
+            <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <RotuloMiudo>Paciente</RotuloMiudo>
+                <div className="flex gap-2 text-[12px]">
+                  {pacientes.length > 0 && (
+                    <button
+                      type="button"
+                      className={
+                        modoPaciente === 'lista'
+                          ? 'font-medium text-texto underline-offset-2'
+                          : 'text-texto-suave underline-offset-2 hover:underline'
+                      }
+                      onClick={() => setModoPaciente('lista')}
+                    >
+                      Da lista
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={
+                      modoPaciente === 'novo'
+                        ? 'font-medium text-texto underline-offset-2'
+                        : 'text-texto-suave underline-offset-2 hover:underline'
+                    }
+                    onClick={() => setModoPaciente('novo')}
+                  >
+                    Nova paciente
+                  </button>
+                </div>
+              </div>
+
+              {modoPaciente === 'lista' ? (
+                <select name="paciente" required defaultValue="" className={CAMPO}>
+                  <option value="" disabled>
+                    Escolha o paciente
                   </option>
-                ))}
-              </select>
-            </label>
+                  {pacientes.map((paciente) => (
+                    <option key={paciente.id} value={paciente.id}>
+                      {paciente.nome}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="grid gap-3">
+                  <label className="block space-y-1">
+                    <span className="sr-only">Nome completo</span>
+                    <input
+                      name="nomeNovo"
+                      required
+                      autoComplete="name"
+                      placeholder="Nome completo"
+                      className={CAMPO}
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="sr-only">Telefone (opcional)</span>
+                    <input
+                      name="telefoneNovo"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="Telefone (opcional)"
+                      className={CAMPO}
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
 
             <label className="block space-y-1 sm:col-span-2">
               <RotuloMiudo>Procedimento</RotuloMiudo>
@@ -574,3 +675,241 @@ function DialogoDeAgendamento({
     </dialog>
   )
 }
+
+function DialogoDeEdicao({
+  consulta,
+  diasDaGrade,
+  procedimentos,
+  aoFechar,
+}: {
+  consulta: ConsultaNaAgenda
+  diasDaGrade: string[]
+  procedimentos: OpcaoDeProcedimento[]
+  aoFechar: () => void
+}) {
+  const dialogo = useRef<HTMLDialogElement>(null)
+  const inicioAtual = new Date(consulta.inicio)
+  const dataInicial = dataDaClinica(inicioAtual)
+  const minutosIniciais = minutosDoDiaNaClinica(inicioAtual)
+
+  const [dataISO, setDataISO] = useState(() =>
+    diasDaGrade.includes(dataInicial) ? dataInicial : (diasDaGrade[0] ?? dataInicial),
+  )
+  const [minutos, setMinutos] = useState(minutosIniciais)
+  const [procedimentoId, setProcedimentoId] = useState(
+    consulta.procedimentoId ?? procedimentos[0]?.id ?? '',
+  )
+  const [erro, setErro] = useState<string | null>(null)
+  const [confirmarCancelamento, setConfirmarCancelamento] = useState(false)
+  const [pendente, iniciarTransicao] = useTransition()
+
+  const horariosDoDia = FAIXAS.filter((faixa) => faixaAberta(dataISO, faixa))
+  const semCatalogo = procedimentos.length === 0 && !consulta.procedimentoId
+
+  useEffect(() => {
+    const el = dialogo.current
+    if (!el) return
+    if (!el.open) el.showModal()
+  }, [])
+
+  useEffect(() => {
+    const livres = FAIXAS.filter((faixa) => faixaAberta(dataISO, faixa))
+    if (livres.length === 0) return
+    if (!livres.includes(minutos)) setMinutos(livres[0])
+  }, [dataISO, minutos])
+
+  function fechar() {
+    dialogo.current?.close()
+    aoFechar()
+  }
+
+  function salvar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    setErro(null)
+    setConfirmarCancelamento(false)
+
+    iniciarTransicao(async () => {
+      const resultado = await remarcarConsulta({
+        consultaId: consulta.id,
+        procedimentoId: procedimentoId || undefined,
+        inicio: instanteDaClinica(dataISO, minutos).toISOString(),
+      })
+      if (resultado.ok) {
+        fechar()
+        return
+      }
+      setErro(resultado.erro)
+    })
+  }
+
+  function cancelar() {
+    setErro(null)
+    iniciarTransicao(async () => {
+      const resultado = await cancelarConsulta({ consultaId: consulta.id })
+      if (resultado.ok) {
+        fechar()
+        return
+      }
+      setErro(resultado.erro)
+      setConfirmarCancelamento(false)
+    })
+  }
+
+  return (
+    <dialog
+      ref={dialogo}
+      aria-labelledby="titulo-editar-consulta"
+      onCancel={(evento) => {
+        evento.preventDefault()
+        fechar()
+      }}
+      className="m-auto w-[440px] max-w-[92vw] rounded-[18px] border border-linha bg-superficie p-6 text-texto shadow-[var(--shadow-painel)] backdrop:bg-black/40"
+    >
+      <div className="mb-4 space-y-1">
+        <RotuloMiudo tom="acento">Agenda</RotuloMiudo>
+        <h2 id="titulo-editar-consulta" className="font-serif text-[24px] leading-tight">
+          Editar consulta
+        </h2>
+        <p className="text-[13px] leading-relaxed text-texto-suave">
+          Remarque data, horário ou procedimento. Cancelar libera o horário na grade.
+        </p>
+      </div>
+
+      {erro && (
+        <p
+          role="alert"
+          className="mb-4 rounded-cartao border border-red-600/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300"
+        >
+          {erro}
+        </p>
+      )}
+
+      {semCatalogo ? (
+        <div className="space-y-4">
+          <p className="text-sm text-texto-suave">
+            Não há procedimento ativo no catálogo para remarcar esta consulta.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Pilula type="button" variante="contorno" onClick={fechar}>
+              Fechar
+            </Pilula>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={salvar} className="space-y-4">
+          <div className="space-y-1">
+            <RotuloMiudo>Paciente</RotuloMiudo>
+            <p className="rounded-cartao border border-linha bg-superficie-2 px-3 py-2 text-[14px]">
+              {consulta.paciente}
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1">
+              <RotuloMiudo>Data</RotuloMiudo>
+              <select
+                value={dataISO}
+                onChange={(evento) => setDataISO(evento.target.value)}
+                className={CAMPO}
+              >
+                {diasDaGrade.map((dia) => (
+                  <option key={dia} value={dia}>
+                    {formatarDataExtensa(dia)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-1">
+              <RotuloMiudo>Horário</RotuloMiudo>
+              {horariosDoDia.length === 0 ? (
+                <p className="rounded-cartao border border-linha px-3 py-2 text-[13px] text-texto-mudo">
+                  Sem expediente neste dia
+                </p>
+              ) : (
+                <select
+                  value={minutos}
+                  onChange={(evento) => setMinutos(Number(evento.target.value))}
+                  className={CAMPO}
+                >
+                  {horariosDoDia.map((faixa) => (
+                    <option key={faixa} value={faixa}>
+                      {hhmm(faixa)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </label>
+
+            <label className="block space-y-1 sm:col-span-2">
+              <RotuloMiudo>Procedimento</RotuloMiudo>
+              <select
+                value={procedimentoId}
+                onChange={(evento) => setProcedimentoId(evento.target.value)}
+                required
+                className={CAMPO}
+              >
+                {consulta.procedimentoId &&
+                  !procedimentos.some((item) => item.id === consulta.procedimentoId) && (
+                    <option value={consulta.procedimentoId}>{consulta.procedimento}</option>
+                  )}
+                {procedimentos.map((procedimento) => (
+                  <option key={procedimento.id} value={procedimento.id}>
+                    {procedimento.nome} · {procedimento.duracaoMinutos} min
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {confirmarCancelamento ? (
+            <div className="space-y-3 rounded-cartao border border-red-600/30 bg-red-500/5 p-3">
+              <p className="text-[13px] text-texto">
+                Cancelar a consulta de <strong>{consulta.paciente}</strong>? O horário fica
+                livre.
+              </p>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Pilula
+                  type="button"
+                  variante="contorno"
+                  disabled={pendente}
+                  onClick={() => setConfirmarCancelamento(false)}
+                >
+                  Voltar
+                </Pilula>
+                <Pilula type="button" variante="solida" disabled={pendente} onClick={cancelar}>
+                  {pendente ? 'Cancelando…' : 'Confirmar cancelamento'}
+                </Pilula>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <Pilula
+                type="button"
+                variante="contorno"
+                disabled={pendente}
+                onClick={() => setConfirmarCancelamento(true)}
+                className="border-red-600/40 text-red-700 dark:text-red-300"
+              >
+                Cancelar consulta
+              </Pilula>
+              <div className="flex flex-wrap gap-2">
+                <Pilula type="button" variante="contorno" onClick={fechar} disabled={pendente}>
+                  Fechar
+                </Pilula>
+                <Pilula
+                  type="submit"
+                  variante="solida"
+                  disabled={pendente || horariosDoDia.length === 0}
+                >
+                  {pendente ? 'Salvando…' : 'Salvar'}
+                </Pilula>
+              </div>
+            </div>
+          )}
+        </form>
+      )}
+    </dialog>
+  )
+}
+

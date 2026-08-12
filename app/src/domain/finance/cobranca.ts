@@ -180,6 +180,13 @@ export function validarComposicao(c: ComposicaoCobranca): ResultadoValidacao {
         erro: 'Informe o número de parcelas (pelo menos 1) quando houver valor parcelado.',
       }
     }
+    if (qtd > 4) {
+      return {
+        ok: false,
+        codigo: 'regra',
+        erro: 'No cartão o máximo é 4 parcelas (taxas da maquininha).',
+      }
+    }
     // Cada parcela precisa de ≥ 1 centavo (constraint do banco).
     if (c.valor_parcelado_centavos < qtd) {
       return {

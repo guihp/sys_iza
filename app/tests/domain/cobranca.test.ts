@@ -103,6 +103,20 @@ describe('alvoRecebimentoCentavos + validarComposicao', () => {
     ).toEqual({ ok: true })
   })
 
+  it('recusa mais de 4 parcelas no cartão', () => {
+    const r = validarComposicao(
+      base({
+        valor_entrada_centavos: 0,
+        valor_parcelado_centavos: 10000,
+        parcelas_qtd: 5,
+      }),
+    )
+    expect(r.ok).toBe(false)
+    if (!r.ok && r.codigo === 'regra') {
+      expect(r.erro).toMatch(/máximo é 4/)
+    }
+  })
+
   it('rejeita valores negativos ou não-inteiros', () => {
     expect(validarComposicao(base({ valor_entrada_centavos: -1 })).ok).toBe(false)
     expect(validarComposicao(base({ valor_total_centavos: 10.5 })).ok).toBe(false)

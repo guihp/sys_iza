@@ -14,6 +14,7 @@ import { validarHorarioDeAtendimento } from '@/domain/scheduling/working-hours'
 import { enfileirarConversoes } from '@/lib/conversoes'
 import { dataDaClinica, deslocarData, horaDaClinica, instanteDaClinica } from '@/lib/datetime'
 import { sincronizarConsultaNoGoogle } from '@/lib/google-agenda'
+import { executarCriacaoDeLead } from '@/lib/leads/criar'
 import { planejarLembretesDaConsulta } from '@/lib/lembretes'
 import { avisarEquipeDeNovoAgendamento } from '@/lib/push/enviar'
 
@@ -23,18 +24,46 @@ const CAMINHO_FUNIL = '/crm'
 /** Código do Postgres para violação de constraint de exclusão. */
 const SOBREPOSICAO = '23P01'
 
-export const schemaAgendamento = z.object({
-  pacienteId: z.uuid(),
-  procedimentoId: z.uuid(),
-  /**
-   * Instante absoluto em ISO 8601 com `Z`. Quem monta essa string é o
-   * formulário, com `instanteDaClinica()` — função pura que aplica o fuso da
-   * clínica explicitamente e por isso devolve o mesmo instante no servidor, no
-   * navegador da secretária e no celular da Dra., independente do fuso de cada
-   * um. Se aqui chegasse hora local sem fuso, a consulta cairia três horas fora.
-   */
-  inicio: z.iso.datetime(),
-})
+export const schemaAgendamento = z
+  .object({
+    /** Paciente já no funil. Mutuamente exclusivo com `pacienteNovo`. */
+    pacienteId: z.uuid().optional(),
+    /**
+     * Cadastro mínimo na hora do agendamento (nome; telefone opcional).
+     * Cria o lead e marca a consulta no mesmo pedido.
+     */
+    pacienteNovo: z
+      .object({
+        nome: z
+          .string()
+          .trim()
+          .min(1, 'Informe o nome da paciente.')
+          .max(120, 'Nome longo demais.'),
+        telefone: z.string().trim().max(40).optional(),
+      })
+      .optional(),
+    procedimentoId: z.uuid(),
+    /**
+     * Instante absoluto em ISO 8601 com `Z`. Quem monta essa string é o
+     * formulário, com `instanteDaClinica()` — função pura que aplica o fuso da
+     * clínica explicitamente e por isso devolve o mesmo instante no servidor, no
+     * navegador da secretária e no celular da Dra., independente do fuso de cada
+     * um. Se aqui chegasse hora local sem fuso, a consulta cairia três horas fora.
+     */
+    inicio: z.iso.datetime(),
+  })
+  .superRefine((dados, ctx) => {
+    const temId = Boolean(dados.pacienteId)
+    const temNovo = Boolean(dados.pacienteNovo)
+    if (temId === temNovo) {
+      ctx.addIssue({
+        code: 'custom',
+        message: temId
+          ? 'Informe só paciente da lista ou paciente novo — não os dois.'
+          : 'Preencha paciente, procedimento e horário para agendar.',
+      })
+    }
+  })
 
 /**
  * Resultado de agendar.
@@ -67,9 +96,34 @@ export async function executarAgendamento(
 ): Promise<ResultadoDeAgendamento> {
   const analise = schemaAgendamento.safeParse(entrada)
   if (!analise.success) {
-    return { ok: false, erro: 'Preencha paciente, procedimento e horário para agendar.' }
+    return {
+      ok: false,
+      erro:
+        analise.error.issues[0]?.message ??
+        'Preencha paciente, procedimento e horário para agendar.',
+    }
   }
   const dados = analise.data
+
+  let pacienteId = dados.pacienteId
+  if (dados.pacienteNovo) {
+    const criado = await executarCriacaoDeLead(
+      supabase,
+      {
+        nome: dados.pacienteNovo.nome,
+        telefone: dados.pacienteNovo.telefone,
+        origem: 'Agenda',
+        procedimentoInteresseId: dados.procedimentoId,
+      },
+      atorId,
+    )
+    if (!criado.ok) return criado
+    pacienteId = criado.pacienteId
+  }
+
+  if (!pacienteId) {
+    return { ok: false, erro: 'Preencha paciente, procedimento e horário para agendar.' }
+  }
 
   const { data: procedimento, error: erroProcedimento } = await supabase
     .from('procedures')
@@ -119,7 +173,7 @@ export async function executarAgendamento(
   const { data: consulta, error } = await supabase
     .from('appointments')
     .insert({
-      patient_id: dados.pacienteId,
+      patient_id: pacienteId,
       procedure_id: dados.procedimentoId,
       inicio: inicio.toISOString(),
       fim: fim.toISOString(),
@@ -137,10 +191,10 @@ export async function executarAgendamento(
   const { data: pacienteAntes } = await supabase
     .from('patients')
     .select('stage, nome_completo')
-    .eq('id', dados.pacienteId)
+    .eq('id', pacienteId)
     .single()
 
-  await supabase.from('patients').update({ stage: 'agendado' }).eq('id', dados.pacienteId)
+  await supabase.from('patients').update({ stage: 'agendado' }).eq('id', pacienteId)
 
   await supabase.from('audit_log').insert({
     ator: atorId,
@@ -151,14 +205,14 @@ export async function executarAgendamento(
 
   await planejarLembretesDaConsulta(supabase, {
     appointmentId: consulta.id,
-    patientId: dados.pacienteId,
+    patientId: pacienteId,
     inicio,
   })
 
   await sincronizarConsultaNoGoogle(supabase, consulta.id)
 
   await enfileirarConversoes(supabase, {
-    patientId: dados.pacienteId,
+    patientId: pacienteId,
     estagioAnterior: (pacienteAntes as { stage: string } | null)?.stage ?? null,
     estagioNovo: 'agendado',
   })

@@ -155,7 +155,9 @@ export const ENDPOINTS_DA_API: EndpointDoc[] = [
   "pacienteId": "<uuid>",
   "procedimentoId": "<uuid>",
   "inicio": "2026-08-20T17:00:00.000Z"
-}`,
+}
+// ou paciente novo (sem pacienteId):
+// { "pacienteNovo": { "nome": "Maria", "telefone": "11999999999" }, "procedimentoId": "...", "inicio": "..." }`,
     respostaOk: '{ "ok": true, "id": "<uuid-da-consulta>" }',
     codigos: '201 · 400 · 401 · 422',
   },

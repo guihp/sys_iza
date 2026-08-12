@@ -22,7 +22,7 @@ type LinhaDaAgenda = {
   status: string
   observacoes: string | null
   patients: { nome_completo: string } | null
-  procedures: { nome: string } | null
+  procedures: { id: string; nome: string } | null
 }
 
 /**
@@ -65,7 +65,7 @@ export default async function PaginaDaAgenda({
   const [agenda, cadastro, catalogo] = await Promise.all([
     supabase
       .from('appointments')
-      .select('id, inicio, fim, status, observacoes, patients(nome_completo), procedures(nome)')
+      .select('id, inicio, fim, status, observacoes, patients(nome_completo), procedures(id, nome)')
       .gte('inicio', janelaInicio.toISOString())
       .lt('inicio', janelaFim.toISOString())
       .order('inicio'),
@@ -87,6 +87,7 @@ export default async function PaginaDaAgenda({
       status: ehStatusDeConsulta(linha.status) ? linha.status : 'agendado',
       paciente: linha.patients?.nome_completo ?? 'Paciente removido',
       procedimento: linha.procedures?.nome ?? 'Procedimento removido',
+      procedimentoId: linha.procedures?.id ?? null,
       observacoes: linha.observacoes,
     }),
   )
@@ -110,7 +111,7 @@ export default async function PaginaDaAgenda({
       <CabecalhoDePagina
         secao="Semana clínica"
         titulo="Agenda"
-        descricao="Use Nova consulta ou clique num horário livre na grade. Horário ocupado ou fora do expediente é recusado com o motivo — a conferência acontece no servidor, não só na tela."
+        descricao="Use Nova consulta ou clique num horário livre. Paciente pode ser da lista ou cadastrado só com o nome neste pop-up. Horário ocupado ou fora do expediente é recusado com o motivo."
         kpis={
           <>
             <Kpi rotulo="Atendimentos" valor={kpis.atendimentos} sublegenda="nesta semana" />

@@ -20,6 +20,11 @@ import {
   type FormaEntrada,
   type FormaRestante,
 } from '@/domain/finance/cobranca'
+import {
+  jurosMaquininhaCentavos,
+  MAX_PARCELAS_MAQUININHA,
+  taxaMaquininhaPercentual,
+} from '@/domain/finance/taxas-maquininha'
 import { calcularRetorno } from '@/domain/returns/compute-return'
 import {
   formatarMoeda,
@@ -321,14 +326,12 @@ export function RegistrarAtendimento({
   const [parceladoTexto, setParceladoTexto] = useState(
     cobrancaIni ? campoCentavos(cobrancaIni.valor_parcelado_centavos) : '0,00',
   )
-  const [parcelasQtd, setParcelasQtd] = useState(
-    cobrancaIni ? String(Math.max(1, cobrancaIni.parcelas_qtd || 1)) : '1',
-  )
+  const [parcelasQtd, setParcelasQtd] = useState(() => {
+    const qtd = cobrancaIni ? Math.max(1, cobrancaIni.parcelas_qtd || 1) : 1
+    return String(Math.min(MAX_PARCELAS_MAQUININHA, qtd))
+  })
   const [primeiroVencimento, setPrimeiroVencimento] = useState(
     () => primeiraParcela?.vencimento ?? maisUmMes(hojeISO),
-  )
-  const [jurosTexto, setJurosTexto] = useState(
-    cobrancaIni ? campoCentavos(cobrancaIni.juros_maquininha_centavos) : '0,00',
   )
   const [jurosRepassados, setJurosRepassados] = useState(
     cobrancaIni?.juros_repassados_ao_cliente === true,
@@ -380,9 +383,27 @@ export function RegistrarAtendimento({
 
   const totalCentavos = reaisParaCentavos(totalTexto) ?? 0
   const entradaCentavos = reaisParaCentavos(entradaTexto) ?? 0
-  const jurosCentavos = reaisParaCentavos(jurosTexto) ?? 0
   const restandoEhCartao = formaRestante === 'cartao'
-  const qtdParcelas = Math.max(1, Number.parseInt(parcelasQtd, 10) || 1)
+  const qtdParcelas = Math.min(
+    MAX_PARCELAS_MAQUININHA,
+    Math.max(1, Number.parseInt(parcelasQtd, 10) || 1),
+  )
+  // Base clínica no cartão (antes do MDR). Próxima no cartão fica 0 — residual
+  // inteiro vai para o parcelado.
+  const baseCartaoCentavos = restandoEhCartao
+    ? Math.max(0, totalCentavos - entradaCentavos)
+    : 0
+  const jurosCentavos =
+    restandoEhCartao && baseCartaoCentavos > 0
+      ? jurosMaquininhaCentavos({
+          valorBaseCentavos: baseCartaoCentavos,
+          parcelasQtd: qtdParcelas,
+          repassarAoCliente: jurosRepassados,
+        })
+      : 0
+  const taxaPercentual = restandoEhCartao
+    ? taxaMaquininhaPercentual(qtdParcelas, 'credito')
+    : null
 
   // PIX / não informado: residual na próxima. Cartão: residual no parcelado.
   const distribuicaoRestante = incluirPagamento
@@ -448,7 +469,6 @@ export function RegistrarAtendimento({
   // Fora do cartão: sem juros / parcelas da maquininha.
   useEffect(() => {
     if (restandoEhCartao) return
-    setJurosTexto('0,00')
     setJurosRepassados(false)
     setParcelasQtd('1')
   }, [restandoEhCartao])
@@ -609,7 +629,6 @@ export function RegistrarAtendimento({
     setParceladoTexto('0,00')
     setParcelasQtd('1')
     setPrimeiroVencimento(maisUmMes(hojeISO))
-    setJurosTexto('0,00')
     setJurosRepassados(false)
     setPagamentoManual(false)
   }
@@ -1284,18 +1303,26 @@ export function RegistrarAtendimento({
                     </label>
                     <label className="block space-y-1">
                       <span className="text-sm text-texto/80">Nº de parcelas</span>
-                      <input
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={parcelasQtd}
+                      <select
+                        value={String(qtdParcelas)}
                         disabled={parceladoCentavos <= 0 || parcelasTravadas}
                         onChange={(e) => {
                           setPagamentoManual(true)
                           setParcelasQtd(e.target.value)
                         }}
                         className={`${CAMPO} disabled:opacity-50`}
-                      />
+                      >
+                        {Array.from({ length: MAX_PARCELAS_MAQUININHA }, (_, i) => i + 1).map(
+                          (n) => (
+                            <option key={n} value={n}>
+                              {n}×
+                              {taxaMaquininhaPercentual(n, 'credito') != null
+                                ? ` · ${String(taxaMaquininhaPercentual(n, 'credito')).replace('.', ',')}%`
+                                : ''}
+                            </option>
+                          ),
+                        )}
+                      </select>
                     </label>
                     {parceladoCentavos > 0 ? (
                       <label className="block space-y-1">
@@ -1312,14 +1339,15 @@ export function RegistrarAtendimento({
                     <label className="block space-y-1">
                       <span className="text-sm text-texto/80">Juros maquininha (R$)</span>
                       <input
-                        value={jurosTexto}
-                        onChange={(e) => {
-                          setPagamentoManual(true)
-                          setJurosTexto(mascararMoedaAoDigitar(e.target.value))
-                        }}
+                        value={campoCentavos(jurosCentavos)}
+                        readOnly
                         inputMode="decimal"
-                        placeholder="0,00"
-                        className={CAMPO}
+                        className={`${CAMPO} bg-linha/20 text-texto/80`}
+                        title={
+                          taxaPercentual != null
+                            ? `Taxa crédito ${qtdParcelas}×: ${String(taxaPercentual).replace('.', ',')}% sobre o restante no cartão`
+                            : 'Calculado pela taxa da maquininha'
+                        }
                       />
                     </label>
                   </>
@@ -1339,6 +1367,15 @@ export function RegistrarAtendimento({
                   />
                   Juros repassados ao cliente
                 </label>
+              ) : null}
+
+              {restandoEhCartao && taxaPercentual != null ? (
+                <p className="text-xs text-texto/50">
+                  Taxa crédito {qtdParcelas}×: {String(taxaPercentual).replace('.', ',')}%
+                  {jurosRepassados
+                    ? ' — valor no cartão inclui gross-up para a clínica liquidar o clínico.'
+                    : ' — custo da maquininha (clínica absorve); marque repasse para cobrar da paciente.'}
+                </p>
               ) : null}
 
               <p id={`${idGerador}-proxima-ajuda`} className="text-xs text-texto/50">

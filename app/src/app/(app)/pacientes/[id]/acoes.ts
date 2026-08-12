@@ -65,7 +65,7 @@ const schemaCobranca = z.object({
   valor_entrada_centavos: z.coerce.number().int().nonnegative(),
   valor_proxima_consulta_centavos: z.coerce.number().int().nonnegative(),
   valor_parcelado_centavos: z.coerce.number().int().nonnegative(),
-  parcelas_qtd: z.coerce.number().int().positive().optional(),
+  parcelas_qtd: z.coerce.number().int().positive().max(4).optional(),
   juros_maquininha_centavos: z.coerce.number().int().nonnegative(),
   juros_repassados_ao_cliente: z.boolean(),
   forma_entrada: z
